@@ -1,0 +1,1 @@
+module gitlab.com/micvbang/confman-go
