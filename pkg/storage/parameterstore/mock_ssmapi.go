@@ -22,3 +22,12 @@ func (_m *MockSSMClient) GetParameterWithContext(ctx context.Context, input *ssm
 
 	return r0, r1
 }
+
+func (_m *MockSSMClient) PutParameterWithContext(ctx context.Context, input *ssm.PutParameterInput, options ...request.Option) (*ssm.PutParameterOutput, error) {
+	ret := _m.Called()
+
+	r0 := ret.Get(0).(*ssm.PutParameterOutput)
+	r1 := ret.Error(1)
+
+	return r0, r1
+}

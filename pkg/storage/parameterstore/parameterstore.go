@@ -31,7 +31,7 @@ func New(ssmClient ssmiface.SSMAPI, kmsKeyID string, serviceName string) *Parame
 
 func (ps *ParameterStore) Add(ctx context.Context, key string, value string) error {
 	curValue, err := ps.Read(ctx, key)
-	if err != nil {
+	if err != nil && err != storage.ErrConfigNotFound {
 		return err
 	}
 
@@ -39,7 +39,7 @@ func (ps *ParameterStore) Add(ctx context.Context, key string, value string) err
 		return nil
 	}
 
-	ps.ssmClient.PutParameterWithContext(ctx, &ssm.PutParameterInput{
+	_, err = ps.ssmClient.PutParameterWithContext(ctx, &ssm.PutParameterInput{
 		Name:      aws.String(ps.parameterPath(key)),
 		KeyId:     aws.String(ps.kmsKeyID),
 		Type:      aws.String("SecureString"), // Encrypt all configuration
@@ -48,7 +48,7 @@ func (ps *ParameterStore) Add(ctx context.Context, key string, value string) err
 		// If compatible with segmentio/chamber, must write version number here.
 		Description: aws.String(""),
 	})
-	return nil
+	return err
 }
 
 func (ps *ParameterStore) Read(ctx context.Context, key string) (value string, _ error) {
@@ -57,6 +57,9 @@ func (ps *ParameterStore) Read(ctx context.Context, key string) (value string, _
 		WithDecryption: aws.Bool(true),
 	})
 	if err != nil {
+		if _, ok := err.(*ssm.ParameterNotFound); ok {
+			return "", storage.ErrConfigNotFound
+		}
 		return "", err
 	}
 
