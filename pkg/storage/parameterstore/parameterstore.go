@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
 	"github.com/micvbang/go-helpy/inty"
+	"github.com/micvbang/go-helpy/mapy"
 	"gitlab.com/micvbang/confman-go/pkg/confman"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 )
@@ -80,11 +81,7 @@ func (ps *ParameterStore) AddKeys(ctx context.Context, config map[string]string)
 		return nil
 	}
 
-	keys := make([]string, 0, len(config))
-	for key := range config {
-		keys = append(keys, key)
-	}
-
+	keys, _ := mapy.StringKeys(config)
 	ps.log.Debugf("Attempting to add keys %v", keys)
 
 	curConfig, err := ps.ReadKeys(ctx, keys)
@@ -191,7 +188,7 @@ func (ps *ParameterStore) ReadAll(ctx context.Context) (map[string]string, error
 
 	err := ps.ssmClient.GetParametersByPathPagesWithContext(ctx, &ssm.GetParametersByPathInput{
 		Path:             aws.String(ps.serviceName),
-		Recursive:        aws.Bool(true),
+		Recursive:        aws.Bool(false),
 		WithDecryption:   aws.Bool(true),
 		MaxResults:       aws.Int64(maxKeysPerRequest),
 		ParameterFilters: nil,

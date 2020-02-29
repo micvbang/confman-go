@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/micvbang/go-helpy/mapy"
+	"github.com/micvbang/go-helpy/stringy"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 )
 
@@ -15,6 +17,11 @@ type Confman interface {
 	ReadAll(ctx context.Context) (map[string]string, error)
 	Move(ctx context.Context, confman Confman) error
 	Copy(ctx context.Context, confman Confman) error
+
+	// Define enforces the current config, i.e. keys in config will be
+	// added/updated and keys not in config will be deleted.
+	Define(ctx context.Context, config map[string]string) error
+
 	String() string
 }
 
@@ -101,6 +108,32 @@ func (c *confman) copy(ctx context.Context, dst Confman) (map[string]string, err
 	}
 
 	return config, nil
+}
+
+func (c *confman) Define(ctx context.Context, config map[string]string) error {
+	newKeys, _ := mapy.StringKeys(config)
+	newKeysLookup := stringy.ToSet(newKeys)
+
+	currentConfig, err := c.storage.ReadAll(ctx)
+	if err != nil {
+		return err
+	}
+	currentKeys, _ := mapy.StringKeys(currentConfig)
+	keysToDelete := make([]string, 0, len(currentKeys))
+	for _, currentKey := range currentKeys {
+		if !newKeysLookup.Contains(currentKey) {
+			keysToDelete = append(keysToDelete, currentKey)
+		}
+	}
+
+	c.log.Debugf("Defining new keys to be %v, deleting keys %v", newKeys, keysToDelete)
+
+	err = c.storage.AddKeys(ctx, config)
+	if err != nil {
+		return err
+	}
+
+	return c.storage.DeleteKeys(ctx, keysToDelete)
 }
 
 func (c *confman) String() string {
