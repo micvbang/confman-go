@@ -298,6 +298,8 @@ func TestParameterStoreReadKeysOneNotExist(t *testing.T) {
 	require.Equal(t, 0, len(gotValues))
 }
 
+// TODO: test Delete* functionality
+
 func requireConfigEqual(t *testing.T, expected, got map[string]string) {
 	require.Equal(t, len(expected), len(got))
 	for key, value := range expected {
