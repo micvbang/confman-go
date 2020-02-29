@@ -2,7 +2,9 @@ package parameterstore
 
 import (
 	"context"
+	"fmt"
 	"path"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ssm"
@@ -22,6 +24,11 @@ var _ storage.Storage = &ParameterStore{}
 
 // New returns a configured instance of ParameterStore.
 func New(ssmClient ssmiface.SSMAPI, kmsKeyID string, serviceName string) *ParameterStore {
+	// TODO: validate service name
+	if !strings.HasPrefix(serviceName, "/") {
+		serviceName = fmt.Sprintf("/serviceName")
+	}
+
 	return &ParameterStore{
 		ssmClient:   ssmClient,
 		kmsKeyID:    kmsKeyID,
@@ -67,35 +74,32 @@ func (ps *ParameterStore) Read(ctx context.Context, key string) (value string, _
 }
 
 func (ps *ParameterStore) ReadAll(ctx context.Context) (map[string]string, error) {
-	return ps.readAll(ctx, nil)
-}
-
-func (ps *ParameterStore) readAll(ctx context.Context, nextToken *string) (map[string]string, error) {
 	const maxResults = 10
-	parameters := make(map[string]string, 50)
+	config := make(map[string]string, 50)
 
-	numResults := maxResults
-	for numResults >= maxResults {
-		output, err := ps.ssmClient.GetParametersByPathWithContext(ctx, &ssm.GetParametersByPathInput{
-			Path:             aws.String(ps.serviceName),
-			Recursive:        aws.Bool(true),
-			WithDecryption:   aws.Bool(true),
-			MaxResults:       aws.Int64(maxResults),
-			ParameterFilters: nil,
-			NextToken:        nextToken,
-		})
-		if err != nil {
-			return nil, err
-		}
-		numResults = len(output.Parameters)
-
+	err := ps.ssmClient.GetParametersByPathPagesWithContext(ctx, &ssm.GetParametersByPathInput{
+		Path:             aws.String(ps.serviceName),
+		Recursive:        aws.Bool(true),
+		WithDecryption:   aws.Bool(true),
+		MaxResults:       aws.Int64(maxResults),
+		ParameterFilters: nil,
+		NextToken:        nil,
+	}, func(output *ssm.GetParametersByPathOutput, b bool) bool {
 		for _, p := range output.Parameters {
 			key := path.Base(aws.StringValue(p.Name))
-			parameters[key] = aws.StringValue(p.Value)
+			config[key] = aws.StringValue(p.Value)
 		}
+		return true
+	})
+
+	if err != nil {
+		if _, ok := err.(*ssm.ParameterNotFound); ok {
+			return nil, storage.ErrConfigNotFound
+		}
+		return nil, err
 	}
 
-	return parameters, nil
+	return config, nil
 }
 
 func (ps *ParameterStore) Delete(ctx context.Context, key string) error {

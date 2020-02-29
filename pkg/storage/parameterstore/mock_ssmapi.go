@@ -15,7 +15,7 @@ type MockSSMClient struct {
 }
 
 func (_m *MockSSMClient) GetParameterWithContext(ctx context.Context, input *ssm.GetParameterInput, options ...request.Option) (*ssm.GetParameterOutput, error) {
-	ret := _m.Called()
+	ret := _m.Called(ctx, input, options)
 
 	r0 := ret.Get(0).(*ssm.GetParameterOutput)
 	r1 := ret.Error(1)
@@ -24,10 +24,18 @@ func (_m *MockSSMClient) GetParameterWithContext(ctx context.Context, input *ssm
 }
 
 func (_m *MockSSMClient) PutParameterWithContext(ctx context.Context, input *ssm.PutParameterInput, options ...request.Option) (*ssm.PutParameterOutput, error) {
-	ret := _m.Called()
+	ret := _m.Called(ctx, input, options)
 
 	r0 := ret.Get(0).(*ssm.PutParameterOutput)
 	r1 := ret.Error(1)
 
 	return r0, r1
+}
+
+func (_m *MockSSMClient) GetParametersByPathPagesWithContext(ctx context.Context, input *ssm.GetParametersByPathInput, fn func(*ssm.GetParametersByPathOutput, bool) bool, options ...request.Option) error {
+	ret := _m.Called(ctx, input, fn, options)
+
+	r0 := ret.Error(0)
+
+	return r0
 }
