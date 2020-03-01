@@ -41,8 +41,9 @@ func ListCommand(ctx context.Context, app *kingpin.Application, input ListComman
 
 	w := tabwriter.NewWriter(os.Stdout, 25, 4, 2, ' ', 0)
 
+	fmt.Fprintf(w, "Config for '%s'\n", cm.ServiceName())
 	fmt.Fprintln(w, "Key\tValue\t")
-	fmt.Fprintln(w, "=======\t===========\t")
+	fmt.Fprintln(w, "=====\t=======\t")
 
 	for key, value := range config {
 		fmt.Fprintf(w, "%s\t%s\t\n", key, value)

@@ -28,6 +28,9 @@ type Confman interface {
 	// the service name.
 	FormatKeyPath(key string) string
 
+	// ServiceName returns the properly formatted service name
+	ServiceName() string
+
 	String() string
 }
 
@@ -147,6 +150,10 @@ func (c *confman) Define(ctx context.Context, config map[string]string) error {
 	}
 
 	return c.storage.DeleteKeys(ctx, c.serviceName, keysToDelete)
+}
+
+func (c *confman) ServiceName() string {
+	return c.serviceName
 }
 
 func (c *confman) FormatKeyPath(key string) string {

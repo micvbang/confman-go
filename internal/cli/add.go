@@ -46,7 +46,7 @@ func AddCommand(ctx context.Context, app *kingpin.Application, input AddCommandI
 	var err error
 	value := input.Value
 	if len(value) == 0 {
-		value, err = prompt.TerminalPrompt("Enter value: ")
+		value, err = prompt.TerminalPrompt(fmt.Sprintf("Enter value for key '%s': ", input.Key))
 		if err != nil {
 			return err
 		}
