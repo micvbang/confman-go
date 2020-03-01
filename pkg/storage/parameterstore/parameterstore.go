@@ -18,10 +18,9 @@ import (
 // ParameterStore implements storage.Storage using Parameter Store from
 // AWS Systems Manager
 type ParameterStore struct {
-	log         confman.Logger
-	ssmClient   ssmiface.SSMAPI
-	kmsKeyID    string
-	serviceName string
+	log       confman.Logger
+	ssmClient ssmiface.SSMAPI
+	kmsKeyID  string
 }
 
 var _ storage.Storage = &ParameterStore{}
@@ -29,31 +28,24 @@ var _ storage.Storage = &ParameterStore{}
 const kmsKeyAliasPrefix = "alias/"
 
 // New returns a configured instance of ParameterStore.
-func New(log confman.Logger, ssmClient ssmiface.SSMAPI, kmsKeyAlias string, serviceName string) *ParameterStore {
+func New(log confman.Logger, ssmClient ssmiface.SSMAPI, kmsKeyAlias string) *ParameterStore {
 	if !strings.HasPrefix(kmsKeyAlias, kmsKeyAliasPrefix) {
 		kmsKeyAlias = fmt.Sprintf("%s%s", kmsKeyAliasPrefix, kmsKeyAlias)
 	}
 
-	// TODO: validate if valid service name
-	if !strings.HasPrefix(serviceName, "/") {
-		serviceName = fmt.Sprintf("/serviceName")
-	}
-
 	log = log.
 		WithField("storage_type", "ParameterStore").
-		WithField("service_name", serviceName).
 		WithField("kms_key", kmsKeyAlias)
 
 	return &ParameterStore{
-		log:         log,
-		ssmClient:   ssmClient,
-		kmsKeyID:    kmsKeyAlias,
-		serviceName: serviceName,
+		log:       log,
+		ssmClient: ssmClient,
+		kmsKeyID:  kmsKeyAlias,
 	}
 }
 
-func (ps *ParameterStore) Add(ctx context.Context, key string, value string) error {
-	curValue, err := ps.Read(ctx, key)
+func (ps *ParameterStore) Add(ctx context.Context, serviceName string, key string, value string) error {
+	curValue, err := ps.Read(ctx, serviceName, key)
 	if err != nil && err != storage.ErrConfigNotFound {
 		return err
 	}
@@ -63,7 +55,7 @@ func (ps *ParameterStore) Add(ctx context.Context, key string, value string) err
 	}
 
 	_, err = ps.ssmClient.PutParameterWithContext(ctx, &ssm.PutParameterInput{
-		Name:      aws.String(ps.parameterPath(key)),
+		Name:      aws.String(ps.parameterPath(serviceName, key)),
 		KeyId:     aws.String(ps.kmsKeyID),
 		Type:      aws.String("SecureString"), // Encrypt all configuration
 		Overwrite: aws.Bool(true),
@@ -75,7 +67,7 @@ func (ps *ParameterStore) Add(ctx context.Context, key string, value string) err
 	return err
 }
 
-func (ps *ParameterStore) AddKeys(ctx context.Context, config map[string]string) error {
+func (ps *ParameterStore) AddKeys(ctx context.Context, serviceName string, config map[string]string) error {
 	if len(config) == 0 {
 		ps.log.Warnf("AddKeys called with 0 keys")
 		return nil
@@ -84,7 +76,7 @@ func (ps *ParameterStore) AddKeys(ctx context.Context, config map[string]string)
 	keys, _ := mapy.StringKeys(config)
 	ps.log.Debugf("Attempting to add keys %v", keys)
 
-	curConfig, err := ps.ReadKeys(ctx, keys)
+	curConfig, err := ps.ReadKeys(ctx, serviceName, keys)
 	if err != nil && err != storage.ErrConfigNotFound {
 		return err
 	}
@@ -103,7 +95,7 @@ func (ps *ParameterStore) AddKeys(ctx context.Context, config map[string]string)
 		default:
 		}
 
-		err := ps.Add(ctx, key, value)
+		err := ps.Add(ctx, serviceName, key, value)
 		if err != nil {
 			return err
 		}
@@ -114,8 +106,8 @@ func (ps *ParameterStore) AddKeys(ctx context.Context, config map[string]string)
 	return nil
 }
 
-func (ps *ParameterStore) Read(ctx context.Context, key string) (value string, _ error) {
-	config, err := ps.ReadKeys(ctx, []string{key})
+func (ps *ParameterStore) Read(ctx context.Context, serviceName string, key string) (value string, _ error) {
+	config, err := ps.ReadKeys(ctx, serviceName, []string{key})
 	if err != nil {
 		return "", err
 	}
@@ -126,7 +118,7 @@ func (ps *ParameterStore) Read(ctx context.Context, key string) (value string, _
 // maxKeysPerRequest is a limit set by AWS Parameter Store.
 const maxKeysPerRequest = 10
 
-func (ps *ParameterStore) ReadKeys(ctx context.Context, keys []string) (map[string]string, error) {
+func (ps *ParameterStore) ReadKeys(ctx context.Context, serviceName string, keys []string) (map[string]string, error) {
 	if len(keys) == 0 {
 		ps.log.Warnf("ReadKeys called with 0 keys")
 		return nil, nil
@@ -135,7 +127,7 @@ func (ps *ParameterStore) ReadKeys(ctx context.Context, keys []string) (map[stri
 	config := make(map[string]string, len(keys))
 
 	for _, batchKeys := range ps.batchKeys(keys, maxKeysPerRequest) {
-		batchConfig, err := ps.readKeys(ctx, batchKeys)
+		batchConfig, err := ps.readKeys(ctx, serviceName, batchKeys)
 		if err != nil {
 			return nil, err
 		}
@@ -148,7 +140,7 @@ func (ps *ParameterStore) ReadKeys(ctx context.Context, keys []string) (map[stri
 	return config, nil
 }
 
-func (ps *ParameterStore) readKeys(ctx context.Context, keys []string) (map[string]string, error) {
+func (ps *ParameterStore) readKeys(ctx context.Context, serviceName string, keys []string) (map[string]string, error) {
 	if len(keys) > maxKeysPerRequest {
 		return nil, storage.ErrTooManyKeys
 	}
@@ -156,7 +148,7 @@ func (ps *ParameterStore) readKeys(ctx context.Context, keys []string) (map[stri
 	ps.log.Debugf("Attempting to read keys %v", keys)
 
 	output, err := ps.ssmClient.GetParametersWithContext(ctx, &ssm.GetParametersInput{
-		Names:          ps.keysToParameterNames(keys),
+		Names:          ps.keysToParameterNames(serviceName, keys),
 		WithDecryption: aws.Bool(true),
 	})
 	if err != nil {
@@ -181,13 +173,15 @@ func (ps *ParameterStore) readKeys(ctx context.Context, keys []string) (map[stri
 	return config, nil
 }
 
-func (ps *ParameterStore) ReadAll(ctx context.Context) (map[string]string, error) {
+func (ps *ParameterStore) ReadAll(ctx context.Context, serviceName string) (map[string]string, error) {
+	log := ps.log.WithField("service_name", serviceName)
+
 	config := make(map[string]string, 50)
 
-	ps.log.Debugf("Attempting to read all")
+	log.Debugf("Attempting to read all")
 
 	err := ps.ssmClient.GetParametersByPathPagesWithContext(ctx, &ssm.GetParametersByPathInput{
-		Path:             aws.String(ps.serviceName),
+		Path:             aws.String(serviceName),
 		Recursive:        aws.Bool(false),
 		WithDecryption:   aws.Bool(true),
 		MaxResults:       aws.Int64(maxKeysPerRequest),
@@ -211,18 +205,18 @@ func (ps *ParameterStore) ReadAll(ctx context.Context) (map[string]string, error
 	return config, nil
 }
 
-func (ps *ParameterStore) Delete(ctx context.Context, key string) error {
-	return ps.deleteKeys(ctx, []string{key})
+func (ps *ParameterStore) Delete(ctx context.Context, serviceName string, key string) error {
+	return ps.deleteKeys(ctx, serviceName, []string{key})
 }
 
-func (ps *ParameterStore) DeleteKeys(ctx context.Context, keys []string) error {
+func (ps *ParameterStore) DeleteKeys(ctx context.Context, serviceName string, keys []string) error {
 	if len(keys) == 0 {
 		ps.log.Warnf("DeleteKeys called with 0 keys")
 		return nil
 	}
 
 	for _, batchKeys := range ps.batchKeys(keys, maxKeysPerRequest) {
-		err := ps.deleteKeys(ctx, batchKeys)
+		err := ps.deleteKeys(ctx, serviceName, batchKeys)
 		if err != nil {
 			return err
 		}
@@ -231,44 +225,46 @@ func (ps *ParameterStore) DeleteKeys(ctx context.Context, keys []string) error {
 	return nil
 }
 
-func (ps *ParameterStore) deleteKeys(ctx context.Context, keys []string) error {
+func (ps *ParameterStore) deleteKeys(ctx context.Context, serviceName string, keys []string) error {
+	log := ps.log.WithField("service_name", serviceName)
+
 	if len(keys) == 0 {
 		ps.log.Warnf("DeleteKeys called with 0 keys")
 		return nil
 	}
 
-	ps.log.Debugf("Attempting to delete keys %v", keys)
+	log.Debugf("Attempting to delete keys %s %v", keys)
 
 	if len(keys) > maxKeysPerRequest {
 		return storage.ErrTooManyKeys
 	}
 
 	output, err := ps.ssmClient.DeleteParametersWithContext(ctx, &ssm.DeleteParametersInput{
-		Names: ps.keysToParameterNames(keys),
+		Names: ps.keysToParameterNames(serviceName, keys),
 	})
 	if err != nil {
 		return err
 	}
 
 	if len(output.DeletedParameters) != len(keys) {
-		ps.log.Warnf("Attempted to delete %d keys, but deleted %v", len(keys), len(output.DeletedParameters))
+		log.Warnf("Attempted to delete %d keys, but deleted %v", len(keys), len(output.DeletedParameters))
 	}
 
 	for _, parameter := range output.DeletedParameters {
-		ps.log.Debugf("Deleted parameter %s", aws.StringValue(parameter))
+		log.Debugf("Deleted parameter %s", aws.StringValue(parameter))
 	}
 
 	// NOTE: not reporting errors when keys not deleted because.. well, they
 	// aren't there now if they weren't found.
 	for _, parameter := range output.InvalidParameters {
-		ps.log.Warnf("Failed to delete parameter %s", aws.StringValue(parameter))
+		log.Warnf("Failed to delete parameter %s", aws.StringValue(parameter))
 	}
 
 	return nil
 }
 
-func (ps *ParameterStore) parameterPath(key string) string {
-	return path.Join(ps.serviceName, key)
+func (ps *ParameterStore) parameterPath(serviceName string, key string) string {
+	return path.Join(serviceName, key)
 }
 
 func (ps *ParameterStore) parameterBaseName(parameter *ssm.Parameter) string {
@@ -298,16 +294,20 @@ func (ps *ParameterStore) batchKeys(keys []string, batchSize int) [][]string {
 	return batches
 }
 
-func (ps *ParameterStore) keysToParameterNames(keys []string) []*string {
+func (ps *ParameterStore) keysToParameterNames(serviceName string, keys []string) []*string {
 	names := make([]*string, len(keys))
 
 	for i, key := range keys {
-		names[i] = aws.String(ps.parameterPath(key))
+		names[i] = aws.String(ps.parameterPath(serviceName, key))
 	}
 
 	return names
 }
 
 func (ps *ParameterStore) String() string {
-	return fmt.Sprintf("ParameterStore(service name: '%s')", ps.serviceName)
+	return fmt.Sprintf("ParameterStore")
+}
+
+func (ps *ParameterStore) SetLogger(log confman.Logger) {
+	ps.log = log
 }

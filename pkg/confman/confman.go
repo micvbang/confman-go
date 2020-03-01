@@ -3,6 +3,8 @@ package confman
 import (
 	"context"
 	"fmt"
+	"path"
+	"strings"
 
 	"github.com/micvbang/go-helpy/mapy"
 	"github.com/micvbang/go-helpy/stringy"
@@ -22,39 +24,50 @@ type Confman interface {
 	// added/updated and keys not in config will be deleted.
 	Define(ctx context.Context, config map[string]string) error
 
+	// FormatKeyPath returns the full path of the given key, i.e. including
+	// the service name.
+	FormatKeyPath(key string) string
+
 	String() string
 }
 
 type confman struct {
-	log     Logger
-	storage storage.Storage
+	log         Logger
+	storage     storage.Storage
+	serviceName string
 }
 
-func New(log Logger, storage storage.Storage) Confman {
+func New(log Logger, storage storage.Storage, serviceName string) Confman {
+	// TODO: validate if valid service name
+	if !strings.HasPrefix(serviceName, "/") {
+		serviceName = fmt.Sprintf("/%s", serviceName)
+	}
+
 	return &confman{
-		log:     log,
-		storage: storage,
+		log:         log,
+		storage:     storage,
+		serviceName: serviceName,
 	}
 }
 
 func (c *confman) Add(ctx context.Context, key string, value string) error {
-	return c.storage.Add(ctx, key, value)
+	return c.storage.Add(ctx, c.serviceName, key, value)
 }
 
 func (c *confman) AddKeys(ctx context.Context, config map[string]string) error {
-	return c.storage.AddKeys(ctx, config)
+	return c.storage.AddKeys(ctx, c.serviceName, config)
 }
 
 func (c *confman) Read(ctx context.Context, key string) (value string, _ error) {
-	return c.storage.Read(ctx, key)
+	return c.storage.Read(ctx, c.serviceName, key)
 }
 
 func (c *confman) ReadKeys(ctx context.Context, keys []string) (map[string]string, error) {
-	return c.storage.ReadKeys(ctx, keys)
+	return c.storage.ReadKeys(ctx, c.serviceName, keys)
 }
 
 func (c *confman) ReadAll(ctx context.Context) (map[string]string, error) {
-	return c.storage.ReadAll(ctx)
+	return c.storage.ReadAll(ctx, c.serviceName)
 }
 
 func (c *confman) Move(ctx context.Context, dst Confman) error {
@@ -70,7 +83,7 @@ func (c *confman) Move(ctx context.Context, dst Confman) error {
 		keys = append(keys, key)
 	}
 
-	return c.storage.DeleteKeys(ctx, keys)
+	return c.storage.DeleteKeys(ctx, c.serviceName, keys)
 }
 
 func (c *confman) Copy(ctx context.Context, dst Confman) error {
@@ -87,7 +100,7 @@ func (c *confman) copy(ctx context.Context, dst Confman) (map[string]string, err
 	default:
 	}
 
-	config, err := c.storage.ReadAll(ctx)
+	config, err := c.storage.ReadAll(ctx, c.serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +127,7 @@ func (c *confman) Define(ctx context.Context, config map[string]string) error {
 	newKeys, _ := mapy.StringKeys(config)
 	newKeysLookup := stringy.ToSet(newKeys)
 
-	currentConfig, err := c.storage.ReadAll(ctx)
+	currentConfig, err := c.storage.ReadAll(ctx, c.serviceName)
 	if err != nil {
 		return err
 	}
@@ -128,14 +141,18 @@ func (c *confman) Define(ctx context.Context, config map[string]string) error {
 
 	c.log.Debugf("Defining new keys to be %v, deleting keys %v", newKeys, keysToDelete)
 
-	err = c.storage.AddKeys(ctx, config)
+	err = c.storage.AddKeys(ctx, c.serviceName, config)
 	if err != nil {
 		return err
 	}
 
-	return c.storage.DeleteKeys(ctx, keysToDelete)
+	return c.storage.DeleteKeys(ctx, c.serviceName, keysToDelete)
+}
+
+func (c *confman) FormatKeyPath(key string) string {
+	return path.Join(c.serviceName, key)
 }
 
 func (c *confman) String() string {
-	return fmt.Sprintf("Confman(%s)", c.storage)
+	return fmt.Sprintf("Confman(service='%s', storage='%s')", c.serviceName, c.storage)
 }

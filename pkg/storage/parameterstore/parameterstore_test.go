@@ -33,10 +33,10 @@ func TestParameterStoreReadExists(t *testing.T) {
 		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", serviceName)
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotValue, err := ps.Read(ctx, key)
+	gotValue, err := ps.Read(ctx, serviceName, key)
 
 	require.NoError(t, err)
 	require.Equal(t, expectedValue, gotValue)
@@ -50,10 +50,10 @@ func TestParameterStoreReadNotExists(t *testing.T) {
 		Return((*ssm.GetParametersOutput)(nil), &ssm.ParameterNotFound{})
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", "/some/service")
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	_, err := ps.Read(ctx, "some-key")
+	_, err := ps.Read(ctx, "/some/service", "some-key")
 
 	require.Equal(t, storage.ErrConfigNotFound, err)
 }
@@ -79,10 +79,10 @@ func TestParameterStoreAddExistsNotEqual(t *testing.T) {
 	defer ssmMock.AssertExpectations(t)
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", serviceName)
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.Add(ctx, key, value)
+	err := ps.Add(ctx, serviceName, key, value)
 
 	require.NoError(t, err)
 }
@@ -106,10 +106,10 @@ func TestParameterStoreAddExistsEqual(t *testing.T) {
 	defer ssmMock.AssertExpectations(t)
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", serviceName)
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.Add(ctx, key, value)
+	err := ps.Add(ctx, serviceName, key, value)
 
 	require.NoError(t, err)
 }
@@ -134,10 +134,10 @@ func TestParameterStoreAddNotExists(t *testing.T) {
 	defer ssmMock.AssertExpectations(t)
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", serviceName)
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.Add(ctx, key, value)
+	err := ps.Add(ctx, serviceName, key, value)
 
 	require.NoError(t, err)
 }
@@ -159,10 +159,10 @@ func TestParameterStoreReadAllServiceExists(t *testing.T) {
 	mockGetParametersByPathPagesWithContext(ssmMock, serviceName, expectedConfig).Once()
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", serviceName)
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotConfig, err := ps.ReadAll(ctx)
+	gotConfig, err := ps.ReadAll(ctx, serviceName)
 	require.NoError(t, err)
 
 	requireConfigEqual(t, expectedConfig, gotConfig)
@@ -189,10 +189,10 @@ func TestParameterStoreReadAllServiceExistsMultiplePages(t *testing.T) {
 	defer ssmMock.AssertExpectations(t)
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", serviceName)
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotConfig, err := ps.ReadAll(ctx)
+	gotConfig, err := ps.ReadAll(ctx, serviceName)
 	require.NoError(t, err)
 
 	expectedConfig := map[string]string{}
@@ -215,10 +215,10 @@ func TestParameterStoreReadAllServiceNotExists(t *testing.T) {
 		Return(&ssm.ParameterNotFound{})
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", serviceName)
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	_, err := ps.ReadAll(ctx)
+	_, err := ps.ReadAll(ctx, serviceName)
 	require.Equal(t, storage.ErrConfigNotFound, err)
 }
 
@@ -243,10 +243,10 @@ func TestParameterStoreReadKeysAllExist(t *testing.T) {
 		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", serviceName)
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotValues, err := ps.ReadKeys(ctx, expectedKeys)
+	gotValues, err := ps.ReadKeys(ctx, serviceName, expectedKeys)
 	require.NoError(t, err)
 
 	require.Equal(t, len(expectedConfig), len(gotValues))
@@ -265,10 +265,10 @@ func TestParameterStoreReadKeysNoKeys(t *testing.T) {
 	ssmMock := &parameterstore.MockSSMClient{}
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", serviceName)
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotValues, err := ps.ReadKeys(ctx, []string{})
+	gotValues, err := ps.ReadKeys(ctx, serviceName, []string{})
 	require.NoError(t, err)
 	require.Equal(t, 0, len(gotValues))
 }
@@ -290,10 +290,10 @@ func TestParameterStoreReadKeysOneNotExist(t *testing.T) {
 		}, nil)
 
 	log := confman.LogrusWrapper{logrus.New()}
-	ps := parameterstore.New(log, ssmMock, "kms key id", serviceName)
+	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotValues, err := ps.ReadKeys(ctx, []string{nonExistingKey})
+	gotValues, err := ps.ReadKeys(ctx, serviceName, []string{nonExistingKey})
 	require.Equal(t, storage.ErrConfigNotFound, err)
 	require.Equal(t, 0, len(gotValues))
 }
