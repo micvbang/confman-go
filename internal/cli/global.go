@@ -30,11 +30,6 @@ func ConfigureGlobals(app *kingpin.Application) (confman.Logger, storage.Storage
 	app.Flag("debug", "Show debugging output").
 		BoolVar(&GlobalFlags.Debug)
 
-	// TODO: only configure for storage backends that need it
-	app.Flag("aws-region", "AWS region").
-		Envar("AWS_REGION").
-		StringVar(&GlobalFlags.AWSRegion)
-
 	app.Flag("aws-kms-key-alias", "KMS key alias used for config en/decryption").
 		Default("parameter_store_key").
 		Envar("CONFMAN_KMS_KEY_ALIAS").
@@ -44,7 +39,6 @@ func ConfigureGlobals(app *kingpin.Application) (confman.Logger, storage.Storage
 	// TODO: determine storage backend from env/flags
 	// TODO: determine AWS config from env/flags
 	session, err := session.NewSession(&aws.Config{
-		Region:      aws.String(GlobalFlags.AWSRegion),
 		Credentials: credentials.NewEnvCredentials(),
 	})
 	if err != nil {
