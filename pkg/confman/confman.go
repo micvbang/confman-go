@@ -14,9 +14,15 @@ import (
 type Confman interface {
 	Add(ctx context.Context, key string, value string) error
 	AddKeys(ctx context.Context, config map[string]string) error
+
 	Read(ctx context.Context, key string) (value string, _ error)
 	ReadKeys(ctx context.Context, keys []string) (map[string]string, error)
 	ReadAll(ctx context.Context) (map[string]string, error)
+
+	Delete(ctx context.Context, key string) error
+	DeleteKeys(ctx context.Context, keys []string) error
+	DeleteAll(ctx context.Context) error
+
 	Move(ctx context.Context, confman Confman) error
 	Copy(ctx context.Context, confman Confman) error
 
@@ -150,6 +156,28 @@ func (c *confman) Define(ctx context.Context, config map[string]string) error {
 	}
 
 	return c.storage.DeleteKeys(ctx, c.serviceName, keysToDelete)
+}
+
+func (c *confman) Delete(ctx context.Context, key string) error {
+	return c.storage.Delete(ctx, c.ServiceName(), key)
+}
+
+func (c *confman) DeleteKeys(ctx context.Context, keys []string) error {
+	return c.storage.DeleteKeys(ctx, c.serviceName, keys)
+}
+
+func (c *confman) DeleteAll(ctx context.Context) error {
+	config, err := c.storage.ReadAll(ctx, c.serviceName)
+	if err != nil {
+		return err
+	}
+
+	keys, err := mapy.StringKeys(config)
+	if err != nil {
+		return err
+	}
+
+	return c.storage.DeleteKeys(ctx, c.serviceName, keys)
 }
 
 func (c *confman) ServiceName() string {

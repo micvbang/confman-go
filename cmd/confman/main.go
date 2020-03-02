@@ -34,6 +34,7 @@ func run(args []string, exit func(int)) {
 	cli.ConfigureReadCommand(ctx, app, log, storage)
 	cli.ConfigureAddCommand(ctx, app, log, storage)
 	cli.ConfigureListCommand(ctx, app, log, storage)
+	cli.ConfigureDeleteCommand(ctx, app, log, storage)
 
 	kingpin.MustParse(app.Parse(args))
 }
