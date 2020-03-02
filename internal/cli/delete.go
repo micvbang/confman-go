@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/micvbang/go-helpy/stringy"
+	"github.com/micvbang/go-helpy/mapy"
 	"gitlab.com/micvbang/confman-go/pkg/confman"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -14,10 +14,10 @@ import (
 type DeleteCommandInput struct {
 	ServiceName string
 	Keys        []string
+	Format      string
 	Quiet       bool
+	DeleteAll   bool
 }
-
-const deleteAllKeysAlias = "*"
 
 func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log confman.Logger, storage storage.Storage) {
 	input := DeleteCommandInput{}
@@ -27,8 +27,13 @@ func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log c
 		Required().
 		StringVar(&input.ServiceName)
 
-	cmd.Arg("keys", fmt.Sprintf("Keys to delete. Use '%s' for all keys", deleteAllKeysAlias)).
+	cmd.Arg("keys", "Keys to delete").
 		StringsVar(&input.Keys)
+
+	cmd.Flag("delete-all-keys", "Ignore 'keys' argument and delete all keys for service").
+		BoolVar(&input.DeleteAll)
+
+	argAddOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
 		app.FatalIfError(DeleteCommand(ctx, app, input, log, storage), "list")
@@ -39,24 +44,29 @@ func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log c
 func DeleteCommand(ctx context.Context, app *kingpin.Application, input DeleteCommandInput, log confman.Logger, storage storage.Storage) error {
 	cm := confman.New(log, storage, input.ServiceName)
 
-	lookup := stringy.ToSet(input.Keys)
-	allKeys := lookup.Contains(deleteAllKeysAlias)
-
 	w := os.Stdout
 
-	if allKeys {
-		err := cm.DeleteAll(ctx)
+	if !input.DeleteAll {
+		err := cm.DeleteKeys(ctx, input.Keys)
+		if err != nil {
+			return err
+		}
+	} else {
+		config, err := cm.ReadAll(ctx)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintf(w, "Deleted %s", cm.FormatKeyPath(deleteAllKeysAlias))
-		return nil
+		err = cm.DeleteAll(ctx)
+		if err != nil {
+			return err
+		}
+
+		input.Keys, _ = mapy.StringKeys(config)
 	}
 
-	err := cm.DeleteKeys(ctx, input.Keys)
-	if err != nil {
-		return err
+	if input.Format == formatJSON {
+		return outputJSON(w, input.Keys)
 	}
 
 	for _, key := range input.Keys {

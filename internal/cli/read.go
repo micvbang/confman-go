@@ -12,8 +12,9 @@ import (
 
 type ReadCommandInput struct {
 	ServiceName string
-	Key         string
+	Keys        []string
 	Quiet       bool
+	Format      string
 }
 
 func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log confman.Logger, storage storage.Storage) {
@@ -24,14 +25,16 @@ func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log con
 		Required().
 		StringVar(&input.ServiceName)
 
-	cmd.Arg("key", "Name of the key").
+	cmd.Arg("keys", "Name of the keys to read").
 		Required().
-		StringVar(&input.Key)
+		StringsVar(&input.Keys)
 
-	cmd.Flag("quiet", "Print only the value").
+	cmd.Flag("quiet", "Print only the value (only works for a single key").
 		Short('q').
 		Default("false").
 		BoolVar(&input.Quiet)
+
+	argAddOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
 		app.FatalIfError(ReadCommand(ctx, app, input, log, storage), "read")
@@ -41,18 +44,27 @@ func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log con
 
 func ReadCommand(ctx context.Context, app *kingpin.Application, input ReadCommandInput, log confman.Logger, storage storage.Storage) error {
 	cm := confman.New(log, storage, input.ServiceName)
-	value, err := cm.Read(ctx, input.Key)
+	config, err := cm.ReadKeys(ctx, input.Keys)
 	if err != nil {
 		return err
 	}
 
 	w := os.Stdout
 
-	if input.Quiet {
-		fmt.Fprint(w, value)
+	if input.Quiet && len(config) == 1 {
+		for _, value := range config {
+			fmt.Fprint(w, value)
+		}
+
 		return nil
 	}
 
-	fmt.Fprintf(w, "%s: %s", cm.FormatKeyPath(input.Key), value)
+	if input.Format == formatJSON {
+		return outputJSON(w, config)
+	}
+
+	for key, value := range config {
+		fmt.Fprintf(w, "%s=%s\n", cm.FormatKeyPath(key), value)
+	}
 	return nil
 }

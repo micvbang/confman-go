@@ -15,6 +15,7 @@ import (
 type ListCommandInput struct {
 	ServiceName string
 	Key         string
+	Format      string
 	Quiet       bool
 }
 
@@ -25,6 +26,8 @@ func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log con
 	cmd.Arg("service", "Name of the service").
 		Required().
 		StringVar(&input.ServiceName)
+
+	argAddOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
 		app.FatalIfError(ListCommand(ctx, app, input, log, storage), "list")
@@ -39,15 +42,21 @@ func ListCommand(ctx context.Context, app *kingpin.Application, input ListComman
 		return err
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 25, 4, 2, ' ', 0)
+	w := os.Stdout
 
-	fmt.Fprintf(w, "Config for '%s'\n", cm.ServiceName())
-	fmt.Fprintln(w, "Key\tValue\t")
-	fmt.Fprintln(w, "=====\t=======\t")
-
-	for key, value := range config {
-		fmt.Fprintf(w, "%s\t%s\t\n", key, value)
+	if input.Format == formatJSON {
+		return outputJSON(w, config)
 	}
 
-	return w.Flush()
+	tw := tabwriter.NewWriter(w, 25, 4, 2, ' ', 0)
+
+	fmt.Fprintf(tw, "Config for '%s'\n", cm.ServiceName())
+	fmt.Fprintln(tw, "Key\tValue\t")
+	fmt.Fprintln(tw, "=====\t=======\t")
+
+	for key, value := range config {
+		fmt.Fprintf(tw, "%s\t%s\t\n", key, value)
+	}
+
+	return tw.Flush()
 }
