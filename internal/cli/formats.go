@@ -12,7 +12,7 @@ const (
 	formatText = "txt"
 )
 
-func argAddOutputFormat(cmd *kingpin.CmdClause, format *string) {
+func addFlagOutputFormat(cmd *kingpin.CmdClause, format *string) {
 	cmd.Flag("format", "Format of output").
 		Short('f').
 		Default(formatText).
@@ -20,8 +20,11 @@ func argAddOutputFormat(cmd *kingpin.CmdClause, format *string) {
 		EnumVar(format, formatText, formatJSON)
 }
 
-func outputJSON(w io.Writer, v interface{}) error {
-	bs, err := json.MarshalIndent(v, "", "  ")
+func outputJSON(w io.Writer, serviceName string, v interface{}) error {
+	output := map[string]interface{}{
+		serviceName: v,
+	}
+	bs, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		return err
 	}

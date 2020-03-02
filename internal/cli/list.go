@@ -16,6 +16,7 @@ type ListCommandInput struct {
 	ServiceName string
 	Key         string
 	Format      string
+	Reveal      bool
 	Quiet       bool
 }
 
@@ -27,7 +28,11 @@ func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log con
 		Required().
 		StringVar(&input.ServiceName)
 
-	argAddOutputFormat(cmd, &input.Format)
+	cmd.Flag("reveal", "Reveal values").
+		Envar("CONFMAN_REVEAL_VALUES").
+		BoolVar(&input.Reveal)
+
+	addFlagOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
 		app.FatalIfError(ListCommand(ctx, app, input, log, storage), "list")
@@ -42,10 +47,16 @@ func ListCommand(ctx context.Context, app *kingpin.Application, input ListComman
 		return err
 	}
 
+	if !input.Reveal {
+		for key := range config {
+			config[key] = "***"
+		}
+	}
+
 	w := os.Stdout
 
 	if input.Format == formatJSON {
-		return outputJSON(w, config)
+		return outputJSON(w, cm.ServiceName(), config)
 	}
 
 	tw := tabwriter.NewWriter(w, 25, 4, 2, ' ', 0)

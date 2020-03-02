@@ -33,7 +33,7 @@ func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log c
 	cmd.Flag("delete-all-keys", "Ignore 'keys' argument and delete all keys for service").
 		BoolVar(&input.DeleteAll)
 
-	argAddOutputFormat(cmd, &input.Format)
+	addFlagOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
 		app.FatalIfError(DeleteCommand(ctx, app, input, log, storage), "list")
@@ -66,7 +66,7 @@ func DeleteCommand(ctx context.Context, app *kingpin.Application, input DeleteCo
 	}
 
 	if input.Format == formatJSON {
-		return outputJSON(w, input.Keys)
+		return outputJSON(w, cm.ServiceName(), input.Keys)
 	}
 
 	for _, key := range input.Keys {

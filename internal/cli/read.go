@@ -34,7 +34,7 @@ func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log con
 		Default("false").
 		BoolVar(&input.Quiet)
 
-	argAddOutputFormat(cmd, &input.Format)
+	addFlagOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
 		app.FatalIfError(ReadCommand(ctx, app, input, log, storage), "read")
@@ -60,7 +60,7 @@ func ReadCommand(ctx context.Context, app *kingpin.Application, input ReadComman
 	}
 
 	if input.Format == formatJSON {
-		return outputJSON(w, config)
+		return outputJSON(w, cm.ServiceName(), config)
 	}
 
 	for key, value := range config {

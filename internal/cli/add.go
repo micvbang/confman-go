@@ -16,6 +16,7 @@ type AddCommandInput struct {
 	ServiceName string
 	Key         string
 	Value       string
+	Format      string
 }
 
 func ConfigureAddCommand(ctx context.Context, app *kingpin.Application, log confman.Logger, storage storage.Storage) {
@@ -29,6 +30,8 @@ func ConfigureAddCommand(ctx context.Context, app *kingpin.Application, log conf
 	cmd.Arg("key", "Name of the key").
 		Required().
 		StringVar(&input.Key)
+
+	addFlagOutputFormat(cmd, &input.Format)
 
 	cmd.Flag("value", "Value to add (don't use this flag for secret values)").
 		Short('v').
@@ -57,6 +60,11 @@ func AddCommand(ctx context.Context, app *kingpin.Application, input AddCommandI
 		return err
 	}
 
-	fmt.Fprintf(os.Stdout, "%s = '%s'", cm.FormatKeyPath(input.Key), value)
+	w := os.Stdout
+	if input.Format == formatJSON {
+		return outputJSON(w, cm.ServiceName(), map[string]string{input.Key: value})
+	}
+
+	fmt.Fprintf(w, "%s = '%s'", cm.FormatKeyPath(input.Key), value)
 	return nil
 }
