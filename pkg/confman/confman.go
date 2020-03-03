@@ -18,6 +18,7 @@ type Confman interface {
 	Read(ctx context.Context, key string) (value string, _ error)
 	ReadKeys(ctx context.Context, keys []string) (map[string]string, error)
 	ReadAll(ctx context.Context) (map[string]string, error)
+	ReadAllMetadata(ctx context.Context) ([]storage.KeyMetadata, error)
 
 	Delete(ctx context.Context, key string) error
 	DeleteKeys(ctx context.Context, keys []string) error
@@ -36,6 +37,8 @@ type Confman interface {
 
 	// ServiceName returns the properly formatted service name
 	ServiceName() string
+
+	MetadataKeys() []string
 
 	String() string
 }
@@ -77,6 +80,10 @@ func (c *confman) ReadKeys(ctx context.Context, keys []string) (map[string]strin
 
 func (c *confman) ReadAll(ctx context.Context) (map[string]string, error) {
 	return c.storage.ReadAll(ctx, c.serviceName)
+}
+
+func (c *confman) ReadAllMetadata(ctx context.Context) ([]storage.KeyMetadata, error) {
+	return c.storage.ReadAllMetadata(ctx, c.serviceName)
 }
 
 func (c *confman) Move(ctx context.Context, dst Confman) error {
@@ -186,6 +193,10 @@ func (c *confman) ServiceName() string {
 
 func (c *confman) FormatKeyPath(key string) string {
 	return path.Join(c.serviceName, key)
+}
+
+func (c *confman) MetadataKeys() []string {
+	return c.storage.MetadataKeys()
 }
 
 func (c *confman) String() string {

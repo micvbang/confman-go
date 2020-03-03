@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ssm"
@@ -140,6 +142,21 @@ func (ps *ParameterStore) ReadKeys(ctx context.Context, serviceName string, keys
 	return config, nil
 }
 
+func (ps *ParameterStore) keyMetadataToKeyMetadata(readKey keyMetadata) storage.KeyMetadata {
+	return storage.KeyMetadata{
+		Key:   readKey.key,
+		Value: readKey.value,
+		Metadata: map[string]string{
+			"description":        readKey.description,
+			"version":            strconv.FormatInt(readKey.version, 10),
+			"parameter_type":     readKey.parameterType,
+			"last_modified_date": readKey.lastModifiedDate.Format(time.RFC3339),
+			"last_modified_user": readKey.lastModifiedUser,
+			"tier":               readKey.tier,
+		},
+	}
+}
+
 func (ps *ParameterStore) readKeys(ctx context.Context, serviceName string, keys []string) (map[string]string, error) {
 	if len(keys) > maxKeysPerRequest {
 		return nil, storage.ErrTooManyKeys
@@ -176,9 +193,9 @@ func (ps *ParameterStore) readKeys(ctx context.Context, serviceName string, keys
 func (ps *ParameterStore) ReadAll(ctx context.Context, serviceName string) (map[string]string, error) {
 	log := ps.log.WithField("service_name", serviceName)
 
-	config := make(map[string]string, 50)
-
 	log.Debugf("Attempting to read all")
+
+	config := make(map[string]string, 50)
 
 	err := ps.ssmClient.GetParametersByPathPagesWithContext(ctx, &ssm.GetParametersByPathInput{
 		Path:             aws.String(serviceName),
@@ -203,6 +220,79 @@ func (ps *ParameterStore) ReadAll(ctx context.Context, serviceName string) (map[
 	}
 
 	return config, nil
+}
+
+func (ps *ParameterStore) ReadAllMetadata(ctx context.Context, serviceName string) ([]storage.KeyMetadata, error) {
+	readKeys, err := ps.readAllKeyMetadata(ctx, serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	envConfigs := make([]storage.KeyMetadata, 0, len(readKeys))
+	for _, readKey := range readKeys {
+		envConfigs = append(envConfigs, ps.keyMetadataToKeyMetadata(readKey))
+	}
+
+	return envConfigs, nil
+}
+
+type keyMetadata struct {
+	key              string
+	value            string
+	description      string
+	version          int64
+	parameterType    string
+	lastModifiedDate time.Time
+	lastModifiedUser string
+	tier             string
+}
+
+func (ps *ParameterStore) readAllKeyMetadata(ctx context.Context, serviceName string) ([]keyMetadata, error) {
+	log := ps.log.WithField("service_name", serviceName)
+
+	log.Debugf("Attempting to read all metadata")
+
+	config, err := ps.ReadAll(ctx, serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	keysMetadata := make([]keyMetadata, 0, 50)
+
+	err = ps.ssmClient.DescribeParametersPagesWithContext(ctx, &ssm.DescribeParametersInput{
+		ParameterFilters: []*ssm.ParameterStringFilter{
+			&ssm.ParameterStringFilter{
+				Key:    aws.String("Path"),
+				Option: aws.String("OneLevel"),
+				Values: []*string{aws.String(serviceName)},
+			},
+		},
+	}, func(output *ssm.DescribeParametersOutput, b bool) bool {
+		for _, p := range output.Parameters {
+			key := ps.parameterMetadataBaseName(p)
+
+			keysMetadata = append(keysMetadata, keyMetadata{
+				key:              key,
+				value:            config[key],
+				description:      aws.StringValue(p.Description),
+				version:          aws.Int64Value(p.Version),
+				lastModifiedDate: aws.TimeValue(p.LastModifiedDate),
+				parameterType:    aws.StringValue(p.Type),
+				tier:             aws.StringValue(p.Tier),
+				lastModifiedUser: aws.StringValue(p.LastModifiedUser),
+			})
+		}
+
+		return true
+	})
+	if err != nil {
+		if _, ok := err.(*ssm.ParameterNotFound); ok {
+			return nil, storage.ErrConfigNotFound
+		}
+		return nil, err
+	}
+
+	return keysMetadata, nil
 }
 
 func (ps *ParameterStore) Delete(ctx context.Context, serviceName string, key string) error {
@@ -267,6 +357,15 @@ func (ps *ParameterStore) parameterPath(serviceName string, key string) string {
 	return path.Join(serviceName, key)
 }
 
+func (ps *ParameterStore) parameterMetadataBaseName(parameter *ssm.ParameterMetadata) string {
+	// TODO: don't fail silently like this.
+	if parameter == nil {
+		return ""
+	}
+
+	return path.Base(aws.StringValue(parameter.Name))
+}
+
 func (ps *ParameterStore) parameterBaseName(parameter *ssm.Parameter) string {
 	// TODO: don't fail silently like this.
 	if parameter == nil {
@@ -310,4 +409,12 @@ func (ps *ParameterStore) String() string {
 
 func (ps *ParameterStore) SetLogger(log confman.Logger) {
 	ps.log = log
+}
+
+func (ps *ParameterStore) MetadataKeys() []string {
+	return []string{
+		"version",
+		"last_modified_date",
+		"last_modified_user",
+	}
 }

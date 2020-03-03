@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"text/tabwriter"
 
@@ -42,31 +43,47 @@ func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log con
 
 func ListCommand(ctx context.Context, app *kingpin.Application, input ListCommandInput, log confman.Logger, storage storage.Storage) error {
 	cm := confman.New(log, storage, input.ServiceName)
-	config, err := cm.ReadAll(ctx)
+	configKeys, err := cm.ReadAllMetadata(ctx)
 	if err != nil {
 		return err
 	}
 
 	if !input.Reveal {
-		for key := range config {
-			config[key] = "***"
+		for i := range configKeys {
+			configKeys[i].Value = "***"
 		}
 	}
 
 	w := os.Stdout
 
+	if len(configKeys) == 0 {
+		fmt.Fprintf(w, "No keys found for %s", cm.ServiceName())
+		return nil
+	}
+
 	if input.Format == formatJSON {
-		return outputJSON(w, cm.ServiceName(), config)
+		return outputJSON(w, cm.ServiceName(), configKeys)
 	}
 
 	tw := tabwriter.NewWriter(w, 25, 4, 2, ' ', 0)
 
-	fmt.Fprintf(tw, "Config for '%s'\n", cm.ServiceName())
-	fmt.Fprintln(tw, "Key\tValue\t")
-	fmt.Fprintln(tw, "=====\t=======\t")
+	headers := append([]string{"Key", "Value"}, cm.MetadataKeys()...)
+	headerUnderlining := make([]string, len(headers))
+	for i, key := range headers {
+		headerUnderlining[i] = strings.Repeat("=", len(key)+1)
+	}
 
-	for key, value := range config {
-		fmt.Fprintf(tw, "%s\t%s\t\n", key, value)
+	fmt.Fprintf(tw, "Config for '%s'\n", cm.ServiceName())
+	fmt.Fprintln(tw, strings.Join(headers, "\t"))
+	fmt.Fprintln(tw, strings.Join(headerUnderlining, "\t"))
+
+	for _, key := range configKeys {
+		values := []string{key.Key, key.Value}
+		for _, metadataKey := range cm.MetadataKeys() {
+			values = append(values, key.Metadata[metadataKey])
+		}
+
+		fmt.Fprintf(tw, fmt.Sprintf("%s\n", strings.Join(values, "\t")))
 	}
 
 	return tw.Flush()
