@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"strings"
 
 	"github.com/micvbang/go-helpy/mapy"
 	"github.com/micvbang/go-helpy/stringy"
@@ -50,15 +49,10 @@ type confman struct {
 }
 
 func New(log Logger, storage storage.Storage, serviceName string) Confman {
-	// TODO: validate if valid service name
-	if !strings.HasPrefix(serviceName, "/") {
-		serviceName = fmt.Sprintf("/%s", serviceName)
-	}
-
 	return &confman{
 		log:         log,
 		storage:     storage,
-		serviceName: serviceName,
+		serviceName: FormatServiceName(serviceName),
 	}
 }
 
