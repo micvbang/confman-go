@@ -20,11 +20,8 @@ func addFlagOutputFormat(cmd *kingpin.CmdClause, format *string) {
 		EnumVar(format, formatText, formatJSON)
 }
 
-func outputJSON(w io.Writer, serviceName string, v interface{}) error {
-	output := map[string]interface{}{
-		serviceName: v,
-	}
-	bs, err := json.MarshalIndent(output, "", "  ")
+func outputJSON(w io.Writer, v interface{}) error {
+	bs, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}

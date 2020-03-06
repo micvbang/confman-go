@@ -61,7 +61,7 @@ func ExecCommand(ctx context.Context, app *kingpin.Application, input ExecComman
 	for key, value := range config {
 		overwritten := env.Set(key, value)
 		if overwritten {
-			fmt.Printf("warning: overwriting var %s", key)
+			fmt.Printf("warning: overwriting var %s\n", key)
 		}
 	}
 

@@ -14,11 +14,11 @@ import (
 )
 
 type ListCommandInput struct {
-	ServiceName string
-	Key         string
-	Format      string
-	Reveal      bool
-	Quiet       bool
+	ServiceNames string
+	Key          string
+	Format       string
+	Reveal       bool
+	Quiet        bool
 }
 
 func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log confman.Logger, storage storage.Storage) {
@@ -27,7 +27,7 @@ func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log con
 	cmd := app.Command("list", "Lists configuration")
 	cmd.Arg("service", "Name of the service").
 		Required().
-		StringVar(&input.ServiceName)
+		StringVar(&input.ServiceNames)
 
 	cmd.Flag("reveal", "Reveal values").
 		Envar("CONFMAN_REVEAL_VALUES").
@@ -41,49 +41,63 @@ func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log con
 	})
 }
 
-func ListCommand(ctx context.Context, app *kingpin.Application, input ListCommandInput, log confman.Logger, storage storage.Storage) error {
-	cm := confman.New(log, storage, input.ServiceName)
-	configKeys, err := cm.ReadAllMetadata(ctx)
-	if err != nil {
-		return err
+func ListCommand(ctx context.Context, app *kingpin.Application, input ListCommandInput, log confman.Logger, s storage.Storage) error {
+	serviceConfigKeys := make(map[string][]storage.KeyMetadata)
+
+	var metadataKeys []string
+	serviceNames := confman.ParseServicePaths(input.ServiceNames)
+	for _, serviceName := range serviceNames {
+		cm := confman.New(log, s, serviceName)
+		configKeys, err := cm.ReadAllMetadata(ctx)
+		if err != nil {
+			return err
+		}
+		serviceConfigKeys[serviceName] = configKeys
+		metadataKeys = cm.MetadataKeys()
 	}
 
 	if !input.Reveal {
-		for i := range configKeys {
-			configKeys[i].Value = "***"
+		for serviceName, configKeys := range serviceConfigKeys {
+			for i := range configKeys {
+				serviceConfigKeys[serviceName][i].Value = "***"
+			}
 		}
 	}
 
 	w := os.Stdout
 
-	if len(configKeys) == 0 {
-		fmt.Fprintf(w, "No keys found for %s", cm.ServiceName())
-		return nil
-	}
-
 	if input.Format == formatJSON {
-		return outputJSON(w, cm.ServiceName(), configKeys)
+		return outputJSON(w, serviceConfigKeys)
 	}
 
 	tw := tabwriter.NewWriter(w, 25, 4, 2, ' ', 0)
 
-	headers := append([]string{"Key", "Value"}, cm.MetadataKeys()...)
-	headerUnderlining := make([]string, len(headers))
-	for i, key := range headers {
-		headerUnderlining[i] = strings.Repeat("=", len(key)+1)
-	}
-
-	fmt.Fprintf(tw, "Config for '%s'\n", cm.ServiceName())
-	fmt.Fprintln(tw, strings.Join(headers, "\t"))
-	fmt.Fprintln(tw, strings.Join(headerUnderlining, "\t"))
-
-	for _, key := range configKeys {
-		values := []string{key.Key, key.Value}
-		for _, metadataKey := range cm.MetadataKeys() {
-			values = append(values, key.Metadata[metadataKey])
+	i := 0
+	numNewlines := len(serviceConfigKeys) - 1
+	for serviceName, configKeys := range serviceConfigKeys {
+		headers := append([]string{"Key", "Value"}, metadataKeys...)
+		headerUnderlining := make([]string, len(headers))
+		for i, key := range headers {
+			headerUnderlining[i] = strings.Repeat("=", len(key)+1)
 		}
 
-		fmt.Fprintf(tw, fmt.Sprintf("%s\n", strings.Join(values, "\t")))
+		fmt.Fprintf(tw, "Config for '%s'\n", serviceName)
+		fmt.Fprintln(tw, strings.Join(headers, "\t"))
+		fmt.Fprintln(tw, strings.Join(headerUnderlining, "\t"))
+
+		for _, key := range configKeys {
+			values := []string{key.Key, key.Value}
+			for _, metadataKey := range metadataKeys {
+				values = append(values, key.Metadata[metadataKey])
+			}
+
+			fmt.Fprintf(tw, fmt.Sprintf("%s\n", strings.Join(values, "\t")))
+		}
+
+		if i < numNewlines {
+			fmt.Fprint(tw, "\n")
+		}
+		i++
 	}
 
 	return tw.Flush()

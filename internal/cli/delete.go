@@ -66,7 +66,9 @@ func DeleteCommand(ctx context.Context, app *kingpin.Application, input DeleteCo
 	}
 
 	if input.Format == formatJSON {
-		return outputJSON(w, cm.ServiceName(), input.Keys)
+		return outputJSON(w, map[string]interface{}{
+			cm.ServiceName(): input.Keys,
+		})
 	}
 
 	for _, key := range input.Keys {

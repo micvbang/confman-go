@@ -62,7 +62,11 @@ func AddCommand(ctx context.Context, app *kingpin.Application, input AddCommandI
 
 	w := os.Stdout
 	if input.Format == formatJSON {
-		return outputJSON(w, cm.ServiceName(), map[string]string{input.Key: value})
+		return outputJSON(w, map[string]interface{}{
+			cm.ServiceName(): map[string]string{
+				input.Key: value,
+			},
+		})
 	}
 
 	fmt.Fprintf(w, "%s = '%s'", cm.FormatKeyPath(input.Key), value)

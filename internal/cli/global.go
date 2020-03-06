@@ -19,8 +19,9 @@ var GlobalFlags struct {
 	Debug bool
 
 	// TODO: only do for storage backends that need it
-	AWSRegion   string
-	KMSKeyAlias string
+	AWSRegion         string
+	KMSKeyAlias       string
+	ChamberCompatible bool
 }
 
 func ConfigureGlobals(app *kingpin.Application) (confman.Logger, storage.Storage) {
@@ -34,6 +35,11 @@ func ConfigureGlobals(app *kingpin.Application) (confman.Logger, storage.Storage
 		Default("parameter_store_key").
 		Envar("CONFMAN_KMS_KEY_ALIAS").
 		StringVar(&GlobalFlags.KMSKeyAlias)
+
+	app.Flag("chamber-compatible", "Read and write data in a way that is compatible with chamber").
+		Default("false").
+		Envar("CONFMAN_CHAMBER_COMPATIBLE").
+		BoolVar(&GlobalFlags.ChamberCompatible)
 
 	var storage storage.Storage
 	// TODO: determine storage backend from env/flags
@@ -54,6 +60,8 @@ func ConfigureGlobals(app *kingpin.Application) (confman.Logger, storage.Storage
 		} else {
 			logrusLog.Level = logrus.PanicLevel
 		}
+
+		confman.ChamberCompatible = GlobalFlags.ChamberCompatible
 
 		return nil
 	})
