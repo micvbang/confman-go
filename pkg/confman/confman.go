@@ -46,10 +46,9 @@ type Confman interface {
 var ChamberCompatible bool = true
 
 type confman struct {
-	log               logger.Logger
-	storage           storage.Storage
-	serviceName       string
-	chamberCompatible bool
+	log         logger.Logger
+	storage     storage.Storage
+	serviceName string
 }
 
 func New(log logger.Logger, s storage.Storage, serviceName string) Confman {
@@ -58,10 +57,9 @@ func New(log logger.Logger, s storage.Storage, serviceName string) Confman {
 	}
 
 	return &confman{
-		log:               log,
-		storage:           s,
-		serviceName:       FormatServiceName(serviceName),
-		chamberCompatible: ChamberCompatible,
+		log:         log,
+		storage:     s,
+		serviceName: FormatServiceName(serviceName),
 	}
 }
 
