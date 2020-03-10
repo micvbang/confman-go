@@ -59,7 +59,7 @@ func ConfigureGlobals(app *kingpin.Application) (logger.Logger, storage.Storage)
 		if GlobalFlags.Debug {
 			logrusLog.Level = logrus.DebugLevel
 		} else {
-			logrusLog.Level = logrus.PanicLevel
+			logrusLog.Level = logrus.WarnLevel
 		}
 
 		confman.ChamberCompatible = GlobalFlags.ChamberCompatible
