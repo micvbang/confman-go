@@ -16,9 +16,10 @@ import (
 )
 
 type ExecCommandInput struct {
-	ServiceNames string
-	Command      string
-	Args         []string
+	ServiceNames       string
+	Command            string
+	Args               []string
+	KeepAWSCredentials bool
 }
 
 func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log confman.Logger, storage storage.Storage) {
@@ -35,6 +36,11 @@ func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log con
 
 	cmd.Arg("args", "Command arguments").
 		StringsVar(&input.Args)
+
+	cmd.Flag("aws-credentials", "Whether to remove AWS credentials from environment of executed command").
+		Default("false").
+		Envar("CONFMAN_KEEP_AWS_CREDENTIALS").
+		BoolVar(&input.KeepAWSCredentials)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
 		app.FatalIfError(ExecCommand(ctx, app, input, log, storage), "exec")
@@ -58,6 +64,24 @@ func ExecCommand(ctx context.Context, app *kingpin.Application, input ExecComman
 	}
 
 	env := environ(os.Environ())
+
+	if !input.KeepAWSCredentials {
+		vars := []string{
+			"AWS_VAULT",
+			"AWS_DEFAULT_REGION",
+			"AWS_REGION",
+			"AWS_ACCESS_KEY_ID",
+			"AWS_SECRET_ACCESS_KEY",
+			"AWS_SESSION_TOKEN",
+			"AWS_SECURITY_TOKEN",
+			"AWS_SESSION_EXPIRATION",
+		}
+
+		for _, v := range vars {
+			env.Unset(v)
+		}
+	}
+
 	for key, value := range config {
 		overwritten := env.Set(key, value)
 		if overwritten {
