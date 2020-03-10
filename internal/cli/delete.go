@@ -7,6 +7,7 @@ import (
 
 	"github.com/micvbang/go-helpy/mapy"
 	"gitlab.com/micvbang/confman-go/pkg/confman"
+	"gitlab.com/micvbang/confman-go/pkg/logger"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -19,7 +20,7 @@ type DeleteCommandInput struct {
 	DeleteAll   bool
 }
 
-func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log confman.Logger, storage storage.Storage) {
+func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log logger.Logger, storage storage.Storage) {
 	input := DeleteCommandInput{}
 
 	cmd := app.Command("delete", "Deletes configuration")
@@ -41,7 +42,7 @@ func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log c
 	})
 }
 
-func DeleteCommand(ctx context.Context, app *kingpin.Application, input DeleteCommandInput, log confman.Logger, storage storage.Storage) error {
+func DeleteCommand(ctx context.Context, app *kingpin.Application, input DeleteCommandInput, log logger.Logger, storage storage.Storage) error {
 	cm := confman.New(log, storage, input.ServiceName)
 
 	w := os.Stdout

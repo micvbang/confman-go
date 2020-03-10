@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 
 	"gitlab.com/micvbang/confman-go/pkg/confman"
+	"gitlab.com/micvbang/confman-go/pkg/logger"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -21,7 +22,7 @@ type ListCommandInput struct {
 	Quiet        bool
 }
 
-func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log confman.Logger, storage storage.Storage) {
+func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log logger.Logger, storage storage.Storage) {
 	input := ListCommandInput{}
 
 	cmd := app.Command("list", "Lists configuration")
@@ -41,7 +42,7 @@ func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log con
 	})
 }
 
-func ListCommand(ctx context.Context, app *kingpin.Application, input ListCommandInput, log confman.Logger, s storage.Storage) error {
+func ListCommand(ctx context.Context, app *kingpin.Application, input ListCommandInput, log logger.Logger, s storage.Storage) error {
 	serviceConfigKeys := make(map[string][]storage.KeyMetadata)
 
 	var metadataKeys []string

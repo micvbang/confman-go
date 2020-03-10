@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"gitlab.com/micvbang/confman-go/pkg/confman"
+	"gitlab.com/micvbang/confman-go/pkg/logger"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -17,7 +18,7 @@ type ReadCommandInput struct {
 	Format      string
 }
 
-func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log confman.Logger, storage storage.Storage) {
+func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log logger.Logger, storage storage.Storage) {
 	input := ReadCommandInput{}
 
 	cmd := app.Command("read", "Reads a configuration")
@@ -42,7 +43,7 @@ func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log con
 	})
 }
 
-func ReadCommand(ctx context.Context, app *kingpin.Application, input ReadCommandInput, log confman.Logger, storage storage.Storage) error {
+func ReadCommand(ctx context.Context, app *kingpin.Application, input ReadCommandInput, log logger.Logger, storage storage.Storage) error {
 	cm := confman.New(log, storage, input.ServiceName)
 	config, err := cm.ReadKeys(ctx, input.Keys)
 	if err != nil {

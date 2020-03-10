@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"strings"
 
 	"github.com/micvbang/go-helpy/mapy"
 	"github.com/micvbang/go-helpy/stringy"
+	"gitlab.com/micvbang/confman-go/pkg/logger"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 )
 
@@ -46,47 +46,43 @@ type Confman interface {
 var ChamberCompatible bool = true
 
 type confman struct {
-	log               Logger
+	log               logger.Logger
 	storage           storage.Storage
 	serviceName       string
 	chamberCompatible bool
 }
 
-func New(log Logger, storage storage.Storage, serviceName string) Confman {
+func New(log logger.Logger, s storage.Storage, serviceName string) Confman {
+	if ChamberCompatible {
+		s = storage.NewChamberCompatibility(log, s)
+	}
+
 	return &confman{
 		log:               log,
-		storage:           storage,
+		storage:           s,
 		serviceName:       FormatServiceName(serviceName),
 		chamberCompatible: ChamberCompatible,
 	}
 }
 
 func (c *confman) Add(ctx context.Context, key string, value string) error {
-	key = c.chamberKeyToLower(key)
-
 	return c.storage.Add(ctx, c.serviceName, key, value)
 }
 
 func (c *confman) AddKeys(ctx context.Context, config map[string]string) error {
-	config = c.chamberConfigToLower(config)
-
 	return c.storage.AddKeys(ctx, c.serviceName, config)
 }
 
 func (c *confman) Read(ctx context.Context, key string) (value string, _ error) {
-	key = c.chamberKeyToLower(key)
 	return c.storage.Read(ctx, c.serviceName, key)
 }
 
 func (c *confman) ReadKeys(ctx context.Context, keys []string) (map[string]string, error) {
-	keys = c.chamberKeysToLower(keys)
-
 	config, err := c.storage.ReadKeys(ctx, c.serviceName, keys)
 	if err != nil {
 		return nil, err
 	}
 
-	config = c.chamberConfigToUpper(config)
 	return config, nil
 }
 
@@ -96,7 +92,6 @@ func (c *confman) ReadAll(ctx context.Context) (map[string]string, error) {
 		return nil, err
 	}
 
-	config = c.chamberConfigToUpper(config)
 	return config, nil
 }
 
@@ -106,7 +101,6 @@ func (c *confman) ReadAllMetadata(ctx context.Context) ([]storage.KeyMetadata, e
 		return nil, err
 	}
 
-	keyMetadata = c.chamberKeyMetaToUpper(keyMetadata)
 	return keyMetadata, nil
 }
 
@@ -166,8 +160,6 @@ func (c *confman) copy(ctx context.Context, dst Confman) (map[string]string, err
 }
 
 func (c *confman) Define(ctx context.Context, config map[string]string) error {
-	config = c.chamberConfigToLower(config)
-
 	newKeys, _ := mapy.StringKeys(config)
 	newKeysLookup := stringy.ToSet(newKeys)
 
@@ -197,12 +189,10 @@ func (c *confman) Define(ctx context.Context, config map[string]string) error {
 }
 
 func (c *confman) Delete(ctx context.Context, key string) error {
-	key = c.chamberKeyToLower(key)
 	return c.storage.Delete(ctx, c.ServiceName(), key)
 }
 
 func (c *confman) DeleteKeys(ctx context.Context, keys []string) error {
-	keys = c.chamberKeysToLower(keys)
 	return c.storage.DeleteKeys(ctx, c.serviceName, keys)
 }
 
@@ -234,60 +224,4 @@ func (c *confman) MetadataKeys() []string {
 
 func (c *confman) String() string {
 	return fmt.Sprintf("Confman(service='%s', storage='%s')", c.serviceName, c.storage)
-}
-
-func (c *confman) chamberKeyToLower(key string) string {
-	if c.chamberCompatible {
-		key = strings.ToLower(key)
-	}
-	return key
-}
-
-func (c *confman) chamberKeyToUpper(key string) string {
-	if c.chamberCompatible {
-		key = strings.ToUpper(key)
-	}
-	return key
-}
-
-func (c *confman) chamberKeyMetaToUpper(keyMetadata []storage.KeyMetadata) []storage.KeyMetadata {
-	for i, keyMeta := range keyMetadata {
-		keyMetadata[i].Key = c.chamberKeyToUpper(keyMeta.Key)
-	}
-
-	return keyMetadata
-}
-
-func (c *confman) chamberKeysToLower(keys []string) []string {
-	if c.chamberCompatible {
-		for i, key := range keys {
-			keys[i] = c.chamberKeyToLower(key)
-		}
-	}
-
-	return keys
-}
-
-func (c *confman) chamberConfigToLower(config map[string]string) map[string]string {
-	if c.chamberCompatible {
-		for key, value := range config {
-			delete(config, key)
-			key = c.chamberKeyToLower(key)
-			config[key] = value
-		}
-	}
-
-	return config
-}
-
-func (c *confman) chamberConfigToUpper(config map[string]string) map[string]string {
-	if c.chamberCompatible {
-		for key, value := range config {
-			delete(config, key)
-			key = c.chamberKeyToUpper(key)
-			config[key] = value
-		}
-	}
-
-	return config
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/99designs/aws-vault/prompt"
+	"gitlab.com/micvbang/confman-go/pkg/logger"
 
 	"gitlab.com/micvbang/confman-go/pkg/confman"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
@@ -19,7 +20,7 @@ type AddCommandInput struct {
 	Format      string
 }
 
-func ConfigureAddCommand(ctx context.Context, app *kingpin.Application, log confman.Logger, storage storage.Storage) {
+func ConfigureAddCommand(ctx context.Context, app *kingpin.Application, log logger.Logger, storage storage.Storage) {
 	input := AddCommandInput{}
 
 	cmd := app.Command("add", "Adds a configuration")
@@ -43,7 +44,7 @@ func ConfigureAddCommand(ctx context.Context, app *kingpin.Application, log conf
 	})
 }
 
-func AddCommand(ctx context.Context, app *kingpin.Application, input AddCommandInput, log confman.Logger, storage storage.Storage) error {
+func AddCommand(ctx context.Context, app *kingpin.Application, input AddCommandInput, log logger.Logger, storage storage.Storage) error {
 	cm := confman.New(log, storage, input.ServiceName)
 
 	var err error

@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/sirupsen/logrus"
 	"gitlab.com/micvbang/confman-go/pkg/confman"
+	"gitlab.com/micvbang/confman-go/pkg/logger"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 	"gitlab.com/micvbang/confman-go/pkg/storage/parameterstore"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -24,9 +25,9 @@ var GlobalFlags struct {
 	ChamberCompatible bool
 }
 
-func ConfigureGlobals(app *kingpin.Application) (confman.Logger, storage.Storage) {
+func ConfigureGlobals(app *kingpin.Application) (logger.Logger, storage.Storage) {
 	logrusLog := logrus.New()
-	log := confman.LogrusWrapper{Logger: logrusLog}
+	log := logger.LogrusWrapper{Logger: logrusLog}
 
 	app.Flag("debug", "Show debugging output").
 		BoolVar(&GlobalFlags.Debug)
@@ -41,7 +42,6 @@ func ConfigureGlobals(app *kingpin.Application) (confman.Logger, storage.Storage
 		Envar("CONFMAN_CHAMBER_COMPATIBLE").
 		BoolVar(&GlobalFlags.ChamberCompatible)
 
-	var storage storage.Storage
 	// TODO: determine storage backend from env/flags
 	// TODO: determine AWS config from env/flags
 	session, err := session.NewSession(&aws.Config{
@@ -52,7 +52,8 @@ func ConfigureGlobals(app *kingpin.Application) (confman.Logger, storage.Storage
 	}
 
 	ssmClient := ssm.New(session)
-	storage = parameterstore.New(log, ssmClient, "parameter_store_key")
+
+	var storageBackend storage.Storage = parameterstore.New(log, ssmClient, "parameter_store_key")
 
 	app.PreAction(func(c *kingpin.ParseContext) (err error) {
 		if GlobalFlags.Debug {
@@ -66,5 +67,5 @@ func ConfigureGlobals(app *kingpin.Application) (confman.Logger, storage.Storage
 		return nil
 	})
 
-	return log, storage
+	return log, storageBackend
 }

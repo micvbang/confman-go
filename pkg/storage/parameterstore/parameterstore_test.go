@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"gitlab.com/micvbang/confman-go/pkg/confman"
+	"gitlab.com/micvbang/confman-go/pkg/logger"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 	"gitlab.com/micvbang/confman-go/pkg/storage/parameterstore"
 )
@@ -32,7 +32,7 @@ func TestParameterStoreReadExists(t *testing.T) {
 	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
 		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -49,7 +49,7 @@ func TestParameterStoreReadNotExists(t *testing.T) {
 	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
 		Return((*ssm.GetParametersOutput)(nil), &ssm.ParameterNotFound{})
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -78,7 +78,7 @@ func TestParameterStoreAddExistsNotEqual(t *testing.T) {
 		Return(&ssm.PutParameterOutput{}, nil)
 	defer ssmMock.AssertExpectations(t)
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -105,7 +105,7 @@ func TestParameterStoreAddExistsEqual(t *testing.T) {
 
 	defer ssmMock.AssertExpectations(t)
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -133,7 +133,7 @@ func TestParameterStoreAddNotExists(t *testing.T) {
 		Return(&ssm.PutParameterOutput{}, nil)
 	defer ssmMock.AssertExpectations(t)
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -158,7 +158,7 @@ func TestParameterStoreReadAllServiceExists(t *testing.T) {
 
 	mockGetParametersByPathPagesWithContext(ssmMock, serviceName, expectedConfig).Once()
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -188,7 +188,7 @@ func TestParameterStoreReadAllServiceExistsMultiplePages(t *testing.T) {
 
 	defer ssmMock.AssertExpectations(t)
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -214,7 +214,7 @@ func TestParameterStoreReadAllServiceNotExists(t *testing.T) {
 	ssmMock.On("GetParametersByPathPagesWithContext", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(&ssm.ParameterNotFound{})
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -242,7 +242,7 @@ func TestParameterStoreReadKeysAllExist(t *testing.T) {
 	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
 		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -264,7 +264,7 @@ func TestParameterStoreReadKeysNoKeys(t *testing.T) {
 
 	ssmMock := &parameterstore.MockSSMClient{}
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -289,7 +289,7 @@ func TestParameterStoreReadKeysOneNotExist(t *testing.T) {
 			InvalidParameters: []*string{aws.String(nonExistingKey)},
 		}, nil)
 
-	log := confman.LogrusWrapper{logrus.New()}
+	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()

@@ -13,14 +13,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
 	"github.com/micvbang/go-helpy/inty"
 	"github.com/micvbang/go-helpy/mapy"
-	"gitlab.com/micvbang/confman-go/pkg/confman"
+	"gitlab.com/micvbang/confman-go/pkg/logger"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 )
 
 // ParameterStore implements storage.Storage using Parameter Store from
 // AWS Systems Manager
 type ParameterStore struct {
-	log       confman.Logger
+	log       logger.Logger
 	ssmClient ssmiface.SSMAPI
 	kmsKeyID  string
 }
@@ -30,7 +30,7 @@ var _ storage.Storage = &ParameterStore{}
 const kmsKeyAliasPrefix = "alias/"
 
 // New returns a configured instance of ParameterStore.
-func New(log confman.Logger, ssmClient ssmiface.SSMAPI, kmsKeyAlias string) *ParameterStore {
+func New(log logger.Logger, ssmClient ssmiface.SSMAPI, kmsKeyAlias string) *ParameterStore {
 	if !strings.HasPrefix(kmsKeyAlias, kmsKeyAliasPrefix) {
 		kmsKeyAlias = fmt.Sprintf("%s%s", kmsKeyAliasPrefix, kmsKeyAlias)
 	}
@@ -407,7 +407,7 @@ func (ps *ParameterStore) String() string {
 	return fmt.Sprintf("ParameterStore")
 }
 
-func (ps *ParameterStore) SetLogger(log confman.Logger) {
+func (ps *ParameterStore) SetLogger(log logger.Logger) {
 	ps.log = log
 }
 

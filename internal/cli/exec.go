@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"gitlab.com/micvbang/confman-go/pkg/confman"
+	"gitlab.com/micvbang/confman-go/pkg/logger"
 	"gitlab.com/micvbang/confman-go/pkg/storage"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -22,7 +23,7 @@ type ExecCommandInput struct {
 	KeepAWSCredentials bool
 }
 
-func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log confman.Logger, storage storage.Storage) {
+func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log logger.Logger, storage storage.Storage) {
 	input := ExecCommandInput{}
 
 	cmd := app.Command("exec", "Populates the environment with secrets from the given configurations")
@@ -48,7 +49,7 @@ func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log con
 	})
 }
 
-func ExecCommand(ctx context.Context, app *kingpin.Application, input ExecCommandInput, log confman.Logger, storage storage.Storage) error {
+func ExecCommand(ctx context.Context, app *kingpin.Application, input ExecCommandInput, log logger.Logger, storage storage.Storage) error {
 	config := make(map[string]string)
 
 	for _, serviceName := range confman.ParseServicePaths(input.ServiceNames) {
