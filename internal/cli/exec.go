@@ -38,8 +38,8 @@ func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log log
 	cmd.Arg("args", "Command arguments").
 		StringsVar(&input.Args)
 
-	cmd.Flag("aws-credentials", "Whether to remove AWS credentials from environment of executed command").
-		Default("false").
+	cmd.Flag("aws-credentials", "Whether to keep AWS credentials in environment of executed command").
+		Default("true").
 		Envar("CONFMAN_KEEP_AWS_CREDENTIALS").
 		BoolVar(&input.KeepAWSCredentials)
 
@@ -80,13 +80,14 @@ func ExecCommand(ctx context.Context, app *kingpin.Application, input ExecComman
 
 		for _, v := range vars {
 			env.Unset(v)
+			log.Debugf("removing env var %s\n", v)
 		}
 	}
 
 	for key, value := range config {
 		overwritten := env.Set(key, value)
 		if overwritten {
-			fmt.Printf("warning: overwriting var %s\n", key)
+			log.Warnf("warning: overwriting var %s\n", key)
 		}
 	}
 
