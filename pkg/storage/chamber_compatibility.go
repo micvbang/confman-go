@@ -130,7 +130,7 @@ func (c *ChamberCompatibility) chamberKeysToLower(keys []string) []string {
 func (c *ChamberCompatibility) chamberConfigToLower(config map[string]string) map[string]string {
 	newConfig := make(map[string]string, len(config))
 	for key, value := range config {
-		newConfig[key] = c.chamberKeyToLower(value)
+		newConfig[c.chamberKeyToLower(key)] = value
 	}
 
 	return newConfig
@@ -139,7 +139,7 @@ func (c *ChamberCompatibility) chamberConfigToLower(config map[string]string) ma
 func (c *ChamberCompatibility) chamberConfigToUpper(config map[string]string) map[string]string {
 	newConfig := make(map[string]string, len(config))
 	for key, value := range config {
-		newConfig[key] = c.chamberKeyToUpper(value)
+		newConfig[c.chamberKeyToUpper(key)] = value
 	}
 
 	return newConfig
