@@ -22,7 +22,7 @@ type ListCommandInput struct {
 	Quiet        bool
 }
 
-func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log logger.Logger, storage storage.Storage) {
+func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log logger.Logger) {
 	input := ListCommandInput{}
 
 	cmd := app.Command("list", "Lists configuration")
@@ -37,7 +37,7 @@ func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log log
 	addFlagOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
-		app.FatalIfError(ListCommand(ctx, app, input, log, storage), "list")
+		app.FatalIfError(ListCommand(ctx, app, input, log, GlobalFlags.Storage), "list")
 		return nil
 	})
 }

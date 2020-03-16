@@ -18,7 +18,7 @@ type ReadCommandInput struct {
 	Format      string
 }
 
-func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log logger.Logger, storage storage.Storage) {
+func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log logger.Logger) {
 	input := ReadCommandInput{}
 
 	cmd := app.Command("read", "Reads a configuration")
@@ -38,7 +38,7 @@ func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log log
 	addFlagOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
-		app.FatalIfError(ReadCommand(ctx, app, input, log, storage), "read")
+		app.FatalIfError(ReadCommand(ctx, app, input, log, GlobalFlags.Storage), "read")
 		return nil
 	})
 }

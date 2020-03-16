@@ -20,7 +20,7 @@ type AddCommandInput struct {
 	Format      string
 }
 
-func ConfigureAddCommand(ctx context.Context, app *kingpin.Application, log logger.Logger, storage storage.Storage) {
+func ConfigureAddCommand(ctx context.Context, app *kingpin.Application, log logger.Logger) {
 	input := AddCommandInput{}
 
 	cmd := app.Command("add", "Adds a configuration")
@@ -39,7 +39,8 @@ func ConfigureAddCommand(ctx context.Context, app *kingpin.Application, log logg
 		StringVar(&input.Value)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
-		app.FatalIfError(AddCommand(ctx, app, input, log, storage), "add")
+
+		app.FatalIfError(AddCommand(ctx, app, input, log, GlobalFlags.Storage), "add")
 		return nil
 	})
 }

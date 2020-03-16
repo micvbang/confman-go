@@ -30,12 +30,12 @@ func run(args []string, exit func(int)) {
 
 	ctx := setupSigIntHandler()
 
-	log, storage := cli.ConfigureGlobals(app)
-	cli.ConfigureReadCommand(ctx, app, log, storage)
-	cli.ConfigureAddCommand(ctx, app, log, storage)
-	cli.ConfigureListCommand(ctx, app, log, storage)
-	cli.ConfigureDeleteCommand(ctx, app, log, storage)
-	cli.ConfigureExecCommand(ctx, app, log, storage)
+	log := cli.ConfigureGlobals(app)
+	cli.ConfigureReadCommand(ctx, app, log)
+	cli.ConfigureAddCommand(ctx, app, log)
+	cli.ConfigureListCommand(ctx, app, log)
+	cli.ConfigureDeleteCommand(ctx, app, log)
+	cli.ConfigureExecCommand(ctx, app, log)
 
 	kingpin.MustParse(app.Parse(args))
 }

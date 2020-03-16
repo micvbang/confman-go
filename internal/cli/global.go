@@ -23,9 +23,11 @@ var GlobalFlags struct {
 	AWSRegion         string
 	KMSKeyAlias       string
 	ChamberCompatible bool
+
+	Storage storage.Storage
 }
 
-func ConfigureGlobals(app *kingpin.Application) (logger.Logger, storage.Storage) {
+func ConfigureGlobals(app *kingpin.Application) logger.Logger {
 	logrusLog := logrus.New()
 	log := logger.LogrusWrapper{Logger: logrusLog}
 
@@ -51,10 +53,6 @@ func ConfigureGlobals(app *kingpin.Application) (logger.Logger, storage.Storage)
 		app.Fatalf("Failed to start AWS session: %v", err)
 	}
 
-	ssmClient := ssm.New(session)
-
-	var storageBackend storage.Storage = parameterstore.New(log, ssmClient, "parameter_store_key")
-
 	app.PreAction(func(c *kingpin.ParseContext) (err error) {
 		if GlobalFlags.Debug {
 			logrusLog.Level = logrus.DebugLevel
@@ -63,9 +61,11 @@ func ConfigureGlobals(app *kingpin.Application) (logger.Logger, storage.Storage)
 		}
 
 		confman.ChamberCompatible = GlobalFlags.ChamberCompatible
+		ssmClient := ssm.New(session)
+		GlobalFlags.Storage = parameterstore.New(log, ssmClient, "parameter_store_key")
 
 		return nil
 	})
 
-	return log, storageBackend
+	return log
 }

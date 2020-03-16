@@ -20,7 +20,7 @@ type DeleteCommandInput struct {
 	DeleteAll   bool
 }
 
-func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log logger.Logger, storage storage.Storage) {
+func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log logger.Logger) {
 	input := DeleteCommandInput{}
 
 	cmd := app.Command("delete", "Deletes configuration")
@@ -37,7 +37,7 @@ func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log l
 	addFlagOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
-		app.FatalIfError(DeleteCommand(ctx, app, input, log, storage), "list")
+		app.FatalIfError(DeleteCommand(ctx, app, input, log, GlobalFlags.Storage), "list")
 		return nil
 	})
 }

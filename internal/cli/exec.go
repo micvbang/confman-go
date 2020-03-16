@@ -23,7 +23,7 @@ type ExecCommandInput struct {
 	KeepAWSCredentials bool
 }
 
-func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log logger.Logger, storage storage.Storage) {
+func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log logger.Logger) {
 	input := ExecCommandInput{}
 
 	cmd := app.Command("exec", "Populates the environment with secrets from the given configurations")
@@ -44,7 +44,7 @@ func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log log
 		BoolVar(&input.KeepAWSCredentials)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
-		app.FatalIfError(ExecCommand(ctx, app, input, log, storage), "exec")
+		app.FatalIfError(ExecCommand(ctx, app, input, log, GlobalFlags.Storage), "exec")
 		return nil
 	})
 }
