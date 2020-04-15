@@ -104,3 +104,4 @@ Flags:
 - `CONFMAN_REVEAL_VALUES` `(true,false)`: whether to show values when calling `list` or not
 - `CONFMAN_DEFAULT_FORMAT` `(txt,json)`: format to output in
 - `CONFMAN_KMS_KEY_ALIAS` `(string)`: alias of KMS key, e.g. `parameter_store_key`.
+- `CONFMAN_CHAMBER_COMPATIBLE` `(true,false)`: whether to read/write data in a way that is compatible with chamber (https://github.com/segmentio/chamber/)
