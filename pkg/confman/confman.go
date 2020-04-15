@@ -103,7 +103,6 @@ func (c *confman) ReadAllMetadata(ctx context.Context) ([]storage.KeyMetadata, e
 }
 
 func (c *confman) Move(ctx context.Context, dst Confman) error {
-	// TODO: add chamber compatibility
 	c.log.Debugf("Attempting to move %v to %v", c, dst)
 
 	config, err := c.copy(ctx, dst)
@@ -125,7 +124,6 @@ func (c *confman) Copy(ctx context.Context, dst Confman) error {
 }
 
 func (c *confman) copy(ctx context.Context, dst Confman) (map[string]string, error) {
-	// TODO: add chamber compatibility
 	c.log.Debugf("Attempting to copy %v to %v", c, dst)
 
 	select {
