@@ -300,6 +300,52 @@ func TestParameterStoreReadKeysOneNotExist(t *testing.T) {
 
 // TODO: test Delete* functionality
 
+// TestDeleteExpectedKey verifies that the expected key is requested for
+// deletion.
+func TestDeleteExpectedKey(t *testing.T) {
+	const (
+		serviceName = "/service/env"
+		key         = "thekey"
+	)
+	keyPath := path.Join(serviceName, key)
+	parameters := []*string{&keyPath}
+
+	ssmMock := &parameterstore.MockSSMClient{}
+	ssmMock.On("DeleteParametersWithContext", mock.Anything, &ssm.DeleteParametersInput{Names: parameters}, mock.Anything).
+		Return(&ssm.DeleteParametersOutput{DeletedParameters: parameters}, nil)
+
+	log := logger.LogrusWrapper{logrus.New()}
+	ps := parameterstore.New(log, ssmMock, "kms key id")
+
+	ctx := context.Background()
+	err := ps.Delete(ctx, serviceName, key)
+	require.NoError(t, err)
+}
+
+// TestDeleteKeysExpectedKeys verifies that the expected keys are requested
+// for deletion.
+func TestDeleteKeysExpectedKeys(t *testing.T) {
+	const (
+		serviceName = "/service/env"
+		key1        = "first_key"
+		key2        = "second_key"
+	)
+	key1Path := path.Join(serviceName, key1)
+	key2Path := path.Join(serviceName, key2)
+	parameters := []*string{&key1Path, &key2Path}
+
+	ssmMock := &parameterstore.MockSSMClient{}
+	ssmMock.On("DeleteParametersWithContext", mock.Anything, &ssm.DeleteParametersInput{Names: parameters}, mock.Anything).
+		Return(&ssm.DeleteParametersOutput{DeletedParameters: parameters}, nil)
+
+	log := logger.LogrusWrapper{logrus.New()}
+	ps := parameterstore.New(log, ssmMock, "kms key id")
+
+	ctx := context.Background()
+	err := ps.DeleteKeys(ctx, serviceName, []string{key1, key2})
+	require.NoError(t, err)
+}
+
 func requireConfigEqual(t *testing.T, expected, got map[string]string) {
 	require.Equal(t, len(expected), len(got))
 	for key, value := range expected {

@@ -48,3 +48,12 @@ func (_m *MockSSMClient) GetParametersByPathPagesWithContext(ctx context.Context
 
 	return r0
 }
+
+func (_m *MockSSMClient) DeleteParametersWithContext(ctx context.Context, input *ssm.DeleteParametersInput, options ...request.Option) (*ssm.DeleteParametersOutput, error) {
+	ret := _m.Called(ctx, input, options)
+
+	r0 := ret.Get(0).(*ssm.DeleteParametersOutput)
+	r1 := ret.Error(1)
+
+	return r0, r1
+}
