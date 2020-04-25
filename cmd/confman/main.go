@@ -32,7 +32,7 @@ func run(args []string, exit func(int)) {
 
 	log := cli.ConfigureGlobals(app)
 	cli.ConfigureReadCommand(ctx, app, log)
-	cli.ConfigureAddCommand(ctx, app, log)
+	cli.ConfigureWriteCommand(ctx, app, log)
 	cli.ConfigureListCommand(ctx, app, log)
 	cli.ConfigureDeleteCommand(ctx, app, log)
 	cli.ConfigureExecCommand(ctx, app, log)

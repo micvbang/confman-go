@@ -12,8 +12,8 @@ import (
 )
 
 type Confman interface {
-	Add(ctx context.Context, key string, value string) error
-	AddKeys(ctx context.Context, config map[string]string) error
+	Write(ctx context.Context, key string, value string) error
+	WriteKeys(ctx context.Context, config map[string]string) error
 
 	Read(ctx context.Context, key string) (value string, _ error)
 	ReadKeys(ctx context.Context, keys []string) (map[string]string, error)
@@ -63,12 +63,12 @@ func New(log logger.Logger, s storage.Storage, serviceName string) Confman {
 	}
 }
 
-func (c *confman) Add(ctx context.Context, key string, value string) error {
-	return c.storage.Add(ctx, c.serviceName, key, value)
+func (c *confman) Write(ctx context.Context, key string, value string) error {
+	return c.storage.Write(ctx, c.serviceName, key, value)
 }
 
-func (c *confman) AddKeys(ctx context.Context, config map[string]string) error {
-	return c.storage.AddKeys(ctx, c.serviceName, config)
+func (c *confman) WriteKeys(ctx context.Context, config map[string]string) error {
+	return c.storage.WriteKeys(ctx, c.serviceName, config)
 }
 
 func (c *confman) Read(ctx context.Context, key string) (value string, _ error) {
@@ -147,7 +147,7 @@ func (c *confman) copy(ctx context.Context, dst Confman) (map[string]string, err
 	default:
 	}
 
-	err = dst.AddKeys(ctx, config)
+	err = dst.WriteKeys(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (c *confman) Define(ctx context.Context, config map[string]string) error {
 
 	// TODO: ask user before deleting
 
-	err = c.storage.AddKeys(ctx, c.serviceName, config)
+	err = c.storage.WriteKeys(ctx, c.serviceName, config)
 	if err != nil {
 		return err
 	}

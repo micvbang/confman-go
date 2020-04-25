@@ -58,10 +58,10 @@ func TestParameterStoreReadNotExists(t *testing.T) {
 	require.Equal(t, storage.ErrConfigNotFound, err)
 }
 
-// TestParameterStoreAddExistsNotEqual verifies that Put updates the given key
+// TestParameterStoreWriteExistsNotEqual verifies that Put updates the given key
 // in AWS Parameter Store when the key already exists, but the stored value is
 // not equal to the input.
-func TestParameterStoreAddExistsNotEqual(t *testing.T) {
+func TestParameterStoreWriteExistsNotEqual(t *testing.T) {
 	const (
 		serviceName = "/service/env"
 		key         = "key"
@@ -82,15 +82,15 @@ func TestParameterStoreAddExistsNotEqual(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.Add(ctx, serviceName, key, value)
+	err := ps.Write(ctx, serviceName, key, value)
 
 	require.NoError(t, err)
 }
 
-// TestParameterStoreAddExistsEqual verifies that Put does not update the
+// TestParameterStoreWriteExistsEqual verifies that Put does not update the
 // given key in AWS Parameter Store when the key/value pair already exists,
 // and the stored value is equal to the input.
-func TestParameterStoreAddExistsEqual(t *testing.T) {
+func TestParameterStoreWriteExistsEqual(t *testing.T) {
 	const (
 		serviceName = "/service/env"
 		key         = "key"
@@ -109,15 +109,15 @@ func TestParameterStoreAddExistsEqual(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.Add(ctx, serviceName, key, value)
+	err := ps.Write(ctx, serviceName, key, value)
 
 	require.NoError(t, err)
 }
 
-// TestParameterStoreAddNotExists verifies that Put adds the given
+// TestParameterStoreWriteNotExists verifies that Put Writes the given
 // key/value pair to AWS Parameter Store when the given key does not already
 // exist.
-func TestParameterStoreAddNotExists(t *testing.T) {
+func TestParameterStoreWriteNotExists(t *testing.T) {
 	const (
 		serviceName = "/service/env"
 		key         = "key"
@@ -137,7 +137,7 @@ func TestParameterStoreAddNotExists(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.Add(ctx, serviceName, key, value)
+	err := ps.Write(ctx, serviceName, key, value)
 
 	require.NoError(t, err)
 }

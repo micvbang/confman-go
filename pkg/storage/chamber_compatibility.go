@@ -24,18 +24,18 @@ func NewChamberCompatibility(log logger.Logger, storage Storage) *ChamberCompati
 	}
 }
 
-func (c *ChamberCompatibility) Add(ctx context.Context, serviceName string, key string, value string) error {
-	c.log.Debugf("Add(ctx, \"%s\", \"%s\", \"%s\")", serviceName, key, value)
+func (c *ChamberCompatibility) Write(ctx context.Context, serviceName string, key string, value string) error {
+	c.log.Debugf("Write(ctx, \"%s\", \"%s\", \"%s\")", serviceName, key, value)
 
 	key = c.chamberKeyToLower(key)
-	return c.storage.Add(ctx, serviceName, key, value)
+	return c.storage.Write(ctx, serviceName, key, value)
 }
 
-func (c *ChamberCompatibility) AddKeys(ctx context.Context, serviceName string, config map[string]string) error {
-	c.log.Debugf("AddKeys(ctx, \"%s\", %+v)", serviceName, config)
+func (c *ChamberCompatibility) WriteKeys(ctx context.Context, serviceName string, config map[string]string) error {
+	c.log.Debugf("WriteKeys(ctx, \"%s\", %+v)", serviceName, config)
 
 	newConfig := c.chamberConfigToLower(config)
-	return c.storage.AddKeys(ctx, serviceName, newConfig)
+	return c.storage.WriteKeys(ctx, serviceName, newConfig)
 }
 
 func (c *ChamberCompatibility) Read(ctx context.Context, serviceName string, key string) (value string, _ error) {

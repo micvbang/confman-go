@@ -46,7 +46,7 @@ func New(log logger.Logger, ssmClient ssmiface.SSMAPI, kmsKeyAlias string) *Para
 	}
 }
 
-func (ps *ParameterStore) Add(ctx context.Context, serviceName string, key string, value string) error {
+func (ps *ParameterStore) Write(ctx context.Context, serviceName string, key string, value string) error {
 	curValue, err := ps.Read(ctx, serviceName, key)
 	if err != nil && err != storage.ErrConfigNotFound {
 		return err
@@ -69,14 +69,14 @@ func (ps *ParameterStore) Add(ctx context.Context, serviceName string, key strin
 	return err
 }
 
-func (ps *ParameterStore) AddKeys(ctx context.Context, serviceName string, config map[string]string) error {
+func (ps *ParameterStore) WriteKeys(ctx context.Context, serviceName string, config map[string]string) error {
 	if len(config) == 0 {
-		ps.log.Warnf("AddKeys called with 0 keys")
+		ps.log.Warnf("WriteKeys called with 0 keys")
 		return nil
 	}
 
 	keys, _ := mapy.StringKeys(config)
-	ps.log.Debugf("Attempting to add keys %v", keys)
+	ps.log.Debugf("Attempting to write keys %v", keys)
 
 	curConfig, err := ps.ReadKeys(ctx, serviceName, keys)
 	if err != nil && err != storage.ErrConfigNotFound {
@@ -97,13 +97,13 @@ func (ps *ParameterStore) AddKeys(ctx context.Context, serviceName string, confi
 		default:
 		}
 
-		err := ps.Add(ctx, serviceName, key, value)
+		err := ps.Write(ctx, serviceName, key, value)
 		if err != nil {
 			return err
 		}
 	}
 
-	ps.log.Debugf("Added keys %v", keys)
+	ps.log.Debugf("Wrote keys %v", keys)
 
 	return nil
 }

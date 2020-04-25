@@ -13,17 +13,17 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-type AddCommandInput struct {
+type WriteCommandInput struct {
 	ServiceName string
 	Key         string
 	Value       string
 	Format      string
 }
 
-func ConfigureAddCommand(ctx context.Context, app *kingpin.Application, log logger.Logger) {
-	input := AddCommandInput{}
+func ConfigureWriteCommand(ctx context.Context, app *kingpin.Application, log logger.Logger) {
+	input := WriteCommandInput{}
 
-	cmd := app.Command("add", "Adds a configuration")
+	cmd := app.Command("write", "Writes a configuration")
 	cmd.Arg("service", "Name of the service").
 		Required().
 		StringVar(&input.ServiceName)
@@ -34,18 +34,18 @@ func ConfigureAddCommand(ctx context.Context, app *kingpin.Application, log logg
 
 	addFlagOutputFormat(cmd, &input.Format)
 
-	cmd.Flag("value", "Value to add (don't use this flag for secret values)").
+	cmd.Flag("value", "Value to write (don't use this flag for secret values)").
 		Short('v').
 		StringVar(&input.Value)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
 
-		app.FatalIfError(AddCommand(ctx, app, input, log, GlobalFlags.Storage), "add")
+		app.FatalIfError(WriteCommand(ctx, app, input, log, GlobalFlags.Storage), "write")
 		return nil
 	})
 }
 
-func AddCommand(ctx context.Context, app *kingpin.Application, input AddCommandInput, log logger.Logger, storage storage.Storage) error {
+func WriteCommand(ctx context.Context, app *kingpin.Application, input WriteCommandInput, log logger.Logger, storage storage.Storage) error {
 	cm := confman.New(log, storage, input.ServiceName)
 
 	var err error
@@ -57,7 +57,7 @@ func AddCommand(ctx context.Context, app *kingpin.Application, input AddCommandI
 		}
 	}
 
-	err = cm.Add(ctx, input.Key, value)
+	err = cm.Write(ctx, input.Key, value)
 	if err != nil {
 		return err
 	}

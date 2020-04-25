@@ -6,11 +6,14 @@ usage: confman [<flags>] <command> [<args> ...]
 A tool for easily managing configurations for services
 
 Flags:
-  --help     Show context-sensitive help (also try --help-long and --help-man).
-  --version  Show application version.
-  --debug    Show debugging output
-  --aws-kms-key-alias="parameter_store_key"
-             KMS key alias used for config en/decryption
+  --help                Show context-sensitive help (also try --help-long and
+                        --help-man).
+  --version             Show application version.
+  --debug               Show debugging output
+  --aws-kms-key-alias="parameter_store_key"  
+                        KMS key alias used for config en/decryption
+  --chamber-compatible  Read and write data in a way that is compatible with
+                        chamber
 
 Commands:
   help [<command>...]
@@ -19,14 +22,17 @@ Commands:
   read [<flags>] <service> <keys>...
     Reads a configuration
 
-  add [<flags>] <service> <key>
-    Adds a configuration
+  write [<flags>] <service> <key>
+    Writes a configuration
 
   list [<flags>] <service>
     Lists configuration
 
   delete [<flags>] <service> [<keys>...]
     Deletes configuration
+
+  exec [<flags>] <service> [<cmd>] [<args>...]
+    Populates the environment with secrets from the given configurations
 ```
 
 ## Read
@@ -46,21 +52,25 @@ Flags:
   -f, --format=txt  Format of output
 ```
 
-## Add
+## Write
 
 ```
-usage: confman add [<flags>] <service> <key>
+usage: confman write [<flags>] <service> <key>
 
-Adds a configuration
+Writes a configuration
 
 Flags:
-      --help         Show context-sensitive help (also try --help-long and --help-man).
-      --version      Show application version.
-      --debug        Show debugging output
-      --aws-kms-key-alias="parameter_store_key"
-                     KMS key alias used for config en/decryption
-  -f, --format=txt   Format of output
-  -v, --value=VALUE  Value to add (don't use this flag for secret values)
+      --help                Show context-sensitive help (also try --help-long
+                            and --help-man).
+      --version             Show application version.
+      --debug               Show debugging output
+      --aws-kms-key-alias="parameter_store_key"  
+                            KMS key alias used for config en/decryption
+      --chamber-compatible  Read and write data in a way that is compatible with
+                            chamber
+  -f, --format=txt          Format of output
+  -v, --value=VALUE         Value to write (don't use this flag for secret
+                            values)
 ```
 
 ## List

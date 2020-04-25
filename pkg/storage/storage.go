@@ -6,8 +6,8 @@ import (
 
 // Storage defines the methods that must be implemented by a storage driver.
 type Storage interface {
-	Add(ctx context.Context, serviceName string, key string, value string) error
-	AddKeys(ctx context.Context, serviceName string, config map[string]string) error
+	Write(ctx context.Context, serviceName string, key string, value string) error
+	WriteKeys(ctx context.Context, serviceName string, config map[string]string) error
 
 	Read(ctx context.Context, serviceName string, key string) (value string, _ error)
 	ReadKeys(ctx context.Context, serviceName string, keys []string) (map[string]string, error)
