@@ -67,7 +67,7 @@ func ReadCommand(ctx context.Context, app *kingpin.Application, input ReadComman
 	}
 
 	for key, value := range config {
-		fmt.Fprintf(w, "%s=%s\n", cm.FormatKeyPath(key), value)
+		fmt.Fprintf(w, "%s = %s\n", cm.FormatKeyPath(key), value)
 	}
 	return nil
 }
