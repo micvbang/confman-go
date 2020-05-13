@@ -66,8 +66,8 @@ func DeleteCommand(ctx context.Context, app *kingpin.Application, input DeleteCo
 		input.Keys, _ = mapy.StringKeys(config)
 	}
 
-	if input.Format == formatJSON {
-		return outputJSON(w, map[string]interface{}{
+	if input.Format != formatText {
+		return outputFormat(input.Format, w, map[string]interface{}{
 			cm.ServiceName(): input.Keys,
 		})
 	}

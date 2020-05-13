@@ -67,8 +67,8 @@ func ListCommand(ctx context.Context, app *kingpin.Application, input ListComman
 
 	w := os.Stdout
 
-	if input.Format == formatJSON {
-		return outputJSON(w, serviceConfigKeys)
+	if input.Format != formatText {
+		return outputFormat(input.Format, w, serviceConfigKeys)
 	}
 
 	tw := tabwriter.NewWriter(w, 25, 4, 2, ' ', 0)

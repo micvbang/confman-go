@@ -60,8 +60,8 @@ func ReadCommand(ctx context.Context, app *kingpin.Application, input ReadComman
 		return nil
 	}
 
-	if input.Format == formatJSON {
-		return outputJSON(w, map[string]interface{}{
+	if input.Format != formatText {
+		return outputFormat(input.Format, w, map[string]interface{}{
 			cm.ServiceName(): config,
 		})
 	}

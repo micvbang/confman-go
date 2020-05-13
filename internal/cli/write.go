@@ -63,8 +63,8 @@ func WriteCommand(ctx context.Context, app *kingpin.Application, input WriteComm
 	}
 
 	w := os.Stdout
-	if input.Format == formatJSON {
-		return outputJSON(w, map[string]interface{}{
+	if input.Format != formatJSON {
+		return outputFormat(input.Format, w, map[string]interface{}{
 			cm.ServiceName(): map[string]string{
 				input.Key: value,
 			},
