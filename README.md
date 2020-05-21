@@ -92,6 +92,7 @@ Example: reading the database password from our email-disapatch service:
 
 ```
 $ confman read /email-dispatch/runtime/development DB_PASSWORD
+/email-dispatch/runtime/development/DB_PASSWORD=secret-password
 ```
 
 ```
