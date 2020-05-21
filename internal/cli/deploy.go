@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,10 +19,10 @@ import (
 )
 
 type DeployCommandInput struct {
-	Path            string
-	Base            string
-	Define          bool
-	DefineYesDelete bool
+	Path      string
+	Base      string
+	Define    bool
+	AssumeYes bool
 }
 
 func ConfigureDeployCommand(ctx context.Context, app *kingpin.Application, log logger.Logger) {
@@ -41,10 +42,10 @@ func ConfigureDeployCommand(ctx context.Context, app *kingpin.Application, log l
 		Default("false").
 		BoolVar(&input.Define)
 
-	cmd.Flag("yes", "Whether to answer \"yes\" to prompts for key deletion (used with \"--define\")").
+	cmd.Flag("assume-yes", "Assume yes to key deletion prompts (used with \"--define\")").
 		Short('y').
 		Default("false").
-		BoolVar(&input.DefineYesDelete)
+		BoolVar(&input.AssumeYes)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
 		app.FatalIfError(DeployCommand(ctx, input, os.Stdin, os.Stdout, log, GlobalFlags.Storage), "deploy")
@@ -63,7 +64,7 @@ func DeployCommand(ctx context.Context, input DeployCommandInput, rd io.Reader, 
 		cm := confman.New(log, storage, servicePath)
 
 		if input.Define {
-			err = handleDefine(ctx, cm, rd, w, serviceConfig.Config, input.DefineYesDelete)
+			err = handleDefine(ctx, cm, rd, w, serviceConfig.Config, input.AssumeYes)
 			if err != nil {
 				return err
 			}
@@ -80,7 +81,9 @@ func DeployCommand(ctx context.Context, input DeployCommandInput, rd io.Reader, 
 	return nil
 }
 
-func handleDefine(ctx context.Context, cm confman.Confman, rd io.Reader, w io.Writer, newConfig map[string]string, yesDelete bool) error {
+var ErrUserAbortedKeyDeletion = errors.New("user aborted key deletion")
+
+func handleDefine(ctx context.Context, cm confman.Confman, rd io.Reader, w io.Writer, newConfig map[string]string, assumeYes bool) error {
 	existingConfig, err := cm.ReadAll(ctx)
 	if err != nil {
 		return err
@@ -98,7 +101,7 @@ func handleDefine(ctx context.Context, cm confman.Confman, rd io.Reader, w io.Wr
 		return nil
 	}
 
-	if !yesDelete {
+	if !assumeYes {
 		fmt.Fprintf(w, "Are you sure that you want to delete the following keys: %v?\nyes/no: ", deleteKeys)
 		var userInput string
 		_, err = fmt.Fscanln(rd, &userInput)
@@ -108,7 +111,7 @@ func handleDefine(ctx context.Context, cm confman.Confman, rd io.Reader, w io.Wr
 
 		userInput = strings.ToLower(userInput)
 		if !strings.HasPrefix(userInput, "y") {
-			return fmt.Errorf("user aborted key deletion in define")
+			return ErrUserAbortedKeyDeletion
 		}
 	}
 
