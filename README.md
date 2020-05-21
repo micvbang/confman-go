@@ -1,6 +1,18 @@
+- [About](#about)
+- [Installation](#installation)
+- [Usage](#usage)
+  * [Developer interface](#developer-interface)
+    + [Read](#read)
+    + [Write](#write)
+    + [List](#list)
+    + [Delete](#delete)
+    + [Environment variables](#environment-variables)
+  * [Service interface](#service-interface)
+
+
 # About
 
-Confman is a tool for managing configuration (including secrets) using AWS SSM Parameter Store. It is highly inspired by chamber (https://github.com/segmentio/chamber), with which it is also compatible (see `CONFMAN_CHAMBER_COMPATIBLE` in the configuration subsection).
+Confman is a tool for managing configuration (including secrets) using AWS SSM Parameter Store. It is highly inspired by chamber (https://github.com/segmentio/chamber), with which it is also compatible (see `CONFMAN_CHAMBER_COMPATIBLE` the [environment variables](#environment-variables) section).
 
 Confman differs (mostly in spirit) from chamber in that it's meant to be used for _configuration_, not just for secrets. 
 The overall goal of confman is to avoid having multiple versions of configuration lying around on different developer/development/production machines, and instead maintain it in a centralized system with ACLs from which the configuration can be retrieved/modified by relevant consumers (developers/services) whenever needed.
