@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/micvbang/confman-go/pkg/confman"
@@ -37,15 +38,13 @@ func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log l
 	addFlagOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
-		app.FatalIfError(DeleteCommand(ctx, app, input, log, GlobalFlags.Storage), "list")
+		app.FatalIfError(DeleteCommand(ctx, input, os.Stdout, log, GlobalFlags.Storage), "delete")
 		return nil
 	})
 }
 
-func DeleteCommand(ctx context.Context, app *kingpin.Application, input DeleteCommandInput, log logger.Logger, storage storage.Storage) error {
+func DeleteCommand(ctx context.Context, input DeleteCommandInput, w io.Writer, log logger.Logger, storage storage.Storage) error {
 	cm := confman.New(log, storage, input.ServiceName)
-
-	w := os.Stdout
 
 	if !input.DeleteAll {
 		err := cm.DeleteKeys(ctx, input.Keys)

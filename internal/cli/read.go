@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/micvbang/confman-go/pkg/confman"
@@ -38,19 +39,17 @@ func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log log
 	addFlagOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
-		app.FatalIfError(ReadCommand(ctx, app, input, log, GlobalFlags.Storage), "read")
+		app.FatalIfError(ReadCommand(ctx, input, os.Stdout, log, GlobalFlags.Storage), "read")
 		return nil
 	})
 }
 
-func ReadCommand(ctx context.Context, app *kingpin.Application, input ReadCommandInput, log logger.Logger, storage storage.Storage) error {
+func ReadCommand(ctx context.Context, input ReadCommandInput, w io.Writer, log logger.Logger, storage storage.Storage) error {
 	cm := confman.New(log, storage, input.ServiceName)
 	config, err := cm.ReadKeys(ctx, input.Keys)
 	if err != nil {
 		return err
 	}
-
-	w := os.Stdout
 
 	if input.Quiet && len(config) == 1 {
 		for _, value := range config {

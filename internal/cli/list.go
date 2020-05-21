@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -37,12 +38,12 @@ func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log log
 	addFlagOutputFormat(cmd, &input.Format)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
-		app.FatalIfError(ListCommand(ctx, app, input, log, GlobalFlags.Storage), "list")
+		app.FatalIfError(ListCommand(ctx, input, os.Stdout, log, GlobalFlags.Storage), "list")
 		return nil
 	})
 }
 
-func ListCommand(ctx context.Context, app *kingpin.Application, input ListCommandInput, log logger.Logger, s storage.Storage) error {
+func ListCommand(ctx context.Context, input ListCommandInput, w io.Writer, log logger.Logger, s storage.Storage) error {
 	serviceConfigKeys := make(map[string][]storage.KeyMetadata)
 
 	var metadataKeys []string
@@ -64,8 +65,6 @@ func ListCommand(ctx context.Context, app *kingpin.Application, input ListComman
 			}
 		}
 	}
-
-	w := os.Stdout
 
 	if input.Format != formatText {
 		return outputFormat(input.Format, w, serviceConfigKeys)

@@ -44,12 +44,12 @@ func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log log
 		BoolVar(&input.KeepAWSCredentials)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
-		app.FatalIfError(ExecCommand(ctx, app, input, log, GlobalFlags.Storage), "exec")
+		app.FatalIfError(ExecCommand(ctx, input, log, GlobalFlags.Storage), "exec")
 		return nil
 	})
 }
 
-func ExecCommand(ctx context.Context, app *kingpin.Application, input ExecCommandInput, log logger.Logger, storage storage.Storage) error {
+func ExecCommand(ctx context.Context, input ExecCommandInput, log logger.Logger, storage storage.Storage) error {
 	config := make(map[string]string)
 
 	for _, serviceName := range confman.ParseServicePaths(input.ServiceNames) {

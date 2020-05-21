@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/99designs/aws-vault/prompt"
@@ -40,12 +41,12 @@ func ConfigureWriteCommand(ctx context.Context, app *kingpin.Application, log lo
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
 
-		app.FatalIfError(WriteCommand(ctx, app, input, log, GlobalFlags.Storage), "write")
+		app.FatalIfError(WriteCommand(ctx, input, os.Stdout, log, GlobalFlags.Storage), "write")
 		return nil
 	})
 }
 
-func WriteCommand(ctx context.Context, app *kingpin.Application, input WriteCommandInput, log logger.Logger, storage storage.Storage) error {
+func WriteCommand(ctx context.Context, input WriteCommandInput, w io.Writer, log logger.Logger, storage storage.Storage) error {
 	cm := confman.New(log, storage, input.ServiceName)
 
 	var err error
@@ -62,7 +63,6 @@ func WriteCommand(ctx context.Context, app *kingpin.Application, input WriteComm
 		return err
 	}
 
-	w := os.Stdout
 	if input.Format != formatText {
 		return outputFormat(input.Format, w, map[string]interface{}{
 			cm.ServiceName(): map[string]string{

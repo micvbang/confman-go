@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,12 +47,12 @@ func ConfigureDeployCommand(ctx context.Context, app *kingpin.Application, log l
 		BoolVar(&input.DefineYesDelete)
 
 	cmd.Action(func(c *kingpin.ParseContext) error {
-		app.FatalIfError(DeployCommand(ctx, app, input, log, GlobalFlags.Storage), "deploy")
+		app.FatalIfError(DeployCommand(ctx, input, os.Stdin, os.Stdout, log, GlobalFlags.Storage), "deploy")
 		return nil
 	})
 }
 
-func DeployCommand(ctx context.Context, app *kingpin.Application, input DeployCommandInput, log logger.Logger, storage storage.Storage) error {
+func DeployCommand(ctx context.Context, input DeployCommandInput, rd io.Reader, w io.Writer, log logger.Logger, storage storage.Storage) error {
 	serviceConfigs, err := configuration.Read(input.Path)
 	if err != nil {
 		return err
@@ -62,7 +63,7 @@ func DeployCommand(ctx context.Context, app *kingpin.Application, input DeployCo
 		cm := confman.New(log, storage, servicePath)
 
 		if input.Define {
-			err = handleDefine(ctx, cm, serviceConfig.Config, input.DefineYesDelete)
+			err = handleDefine(ctx, cm, rd, w, serviceConfig.Config, input.DefineYesDelete)
 			if err != nil {
 				return err
 			}
@@ -79,15 +80,14 @@ func DeployCommand(ctx context.Context, app *kingpin.Application, input DeployCo
 	return nil
 }
 
-func handleDefine(ctx context.Context, cm confman.Confman, newConfig map[string]string, yesDelete bool) error {
+func handleDefine(ctx context.Context, cm confman.Confman, rd io.Reader, w io.Writer, newConfig map[string]string, yesDelete bool) error {
 	existingConfig, err := cm.ReadAll(ctx)
 	if err != nil {
 		return err
 	}
 
-	existingConfigKeys, _ := mapy.StringKeys(existingConfig)
 	deleteKeys := []string{}
-
+	existingConfigKeys, _ := mapy.StringKeys(existingConfig)
 	for _, configKey := range existingConfigKeys {
 		if _, contains := newConfig[configKey]; !contains {
 			deleteKeys = append(deleteKeys, configKey)
@@ -99,9 +99,9 @@ func handleDefine(ctx context.Context, cm confman.Confman, newConfig map[string]
 	}
 
 	if !yesDelete {
-		fmt.Printf("Are you sure that you want to delete the following keys: %v?\nyes/no: ", deleteKeys)
+		fmt.Fprintf(w, "Are you sure that you want to delete the following keys: %v?\nyes/no: ", deleteKeys)
 		var userInput string
-		_, err = fmt.Fscanln(os.Stdin, &userInput)
+		_, err = fmt.Fscanln(rd, &userInput)
 		if err != nil {
 			return err
 		}
