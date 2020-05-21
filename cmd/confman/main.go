@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gitlab.com/micvbang/confman-go/internal/cli"
+	"github.com/micvbang/confman-go/internal/cli"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 

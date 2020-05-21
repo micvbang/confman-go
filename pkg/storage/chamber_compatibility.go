@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gitlab.com/micvbang/confman-go/pkg/logger"
+	"github.com/micvbang/confman-go/pkg/logger"
 )
 
 type ChamberCompatibility struct {

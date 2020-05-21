@@ -11,10 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
+	"github.com/micvbang/confman-go/pkg/logger"
+	"github.com/micvbang/confman-go/pkg/storage"
 	"github.com/micvbang/go-helpy/inty"
 	"github.com/micvbang/go-helpy/mapy"
-	"gitlab.com/micvbang/confman-go/pkg/logger"
-	"gitlab.com/micvbang/confman-go/pkg/storage"
 )
 
 // ParameterStore implements storage.Storage using Parameter Store from

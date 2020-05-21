@@ -5,11 +5,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/micvbang/confman-go/pkg/confman"
+	"github.com/micvbang/confman-go/pkg/logger"
+	"github.com/micvbang/confman-go/pkg/storage"
+	"github.com/micvbang/confman-go/pkg/storage/parameterstore"
 	"github.com/sirupsen/logrus"
-	"gitlab.com/micvbang/confman-go/pkg/confman"
-	"gitlab.com/micvbang/confman-go/pkg/logger"
-	"gitlab.com/micvbang/confman-go/pkg/storage"
-	"gitlab.com/micvbang/confman-go/pkg/storage/parameterstore"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 

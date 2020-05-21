@@ -1,4 +1,4 @@
-module gitlab.com/micvbang/confman-go
+module github.com/micvbang/confman-go
 
 go 1.14
 

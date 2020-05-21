@@ -8,12 +8,12 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/micvbang/confman-go/pkg/logger"
+	"github.com/micvbang/confman-go/pkg/storage"
+	"github.com/micvbang/confman-go/pkg/storage/parameterstore"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"gitlab.com/micvbang/confman-go/pkg/logger"
-	"gitlab.com/micvbang/confman-go/pkg/storage"
-	"gitlab.com/micvbang/confman-go/pkg/storage/parameterstore"
 )
 
 // TestParameterStoreReadExists verifies that ParameterStore returns the

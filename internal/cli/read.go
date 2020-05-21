@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"gitlab.com/micvbang/confman-go/pkg/confman"
-	"gitlab.com/micvbang/confman-go/pkg/logger"
-	"gitlab.com/micvbang/confman-go/pkg/storage"
+	"github.com/micvbang/confman-go/pkg/confman"
+	"github.com/micvbang/confman-go/pkg/logger"
+	"github.com/micvbang/confman-go/pkg/storage"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 

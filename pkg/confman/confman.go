@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/micvbang/confman-go/pkg/logger"
+	"github.com/micvbang/confman-go/pkg/storage"
 	"github.com/micvbang/go-helpy/mapy"
 	"github.com/micvbang/go-helpy/stringy"
-	"gitlab.com/micvbang/confman-go/pkg/logger"
-	"gitlab.com/micvbang/confman-go/pkg/storage"
 )
 
 type Confman interface {

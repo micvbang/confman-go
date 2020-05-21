@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/micvbang/confman-go/pkg/confman"
 	"github.com/micvbang/go-helpy/stringy"
 	"github.com/stretchr/testify/require"
-	"gitlab.com/micvbang/confman-go/pkg/confman"
 )
 
 func TestServicePaths(t *testing.T) {
