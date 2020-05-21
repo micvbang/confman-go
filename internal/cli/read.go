@@ -13,7 +13,7 @@ import (
 )
 
 type ReadCommandInput struct {
-	ServiceName string
+	ServicePath string
 	Keys        []string
 	Quiet       bool
 	Format      string
@@ -25,7 +25,7 @@ func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log log
 	cmd := app.Command("read", "Reads a configuration")
 	cmd.Arg("service", "Name of the service").
 		Required().
-		StringVar(&input.ServiceName)
+		StringVar(&input.ServicePath)
 
 	cmd.Arg("keys", "Name of the keys to read").
 		Required().
@@ -45,7 +45,7 @@ func ConfigureReadCommand(ctx context.Context, app *kingpin.Application, log log
 }
 
 func ReadCommand(ctx context.Context, input ReadCommandInput, w io.Writer, log logger.Logger, storage storage.Storage) error {
-	cm := confman.New(log, storage, input.ServiceName)
+	cm := confman.New(log, storage, input.ServicePath)
 	config, err := cm.ReadKeys(ctx, input.Keys)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func ReadCommand(ctx context.Context, input ReadCommandInput, w io.Writer, log l
 
 	if input.Format != formatText {
 		return outputFormat(input.Format, w, map[string]interface{}{
-			cm.ServiceName(): config,
+			cm.ServicePath(): config,
 		})
 	}
 

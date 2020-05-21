@@ -18,24 +18,25 @@ func parseServicePath(servicePath string) []string {
 	serviceEnvironments := strings.Split(servicePath, "+")
 
 	servicePaths := make([]string, 0, len(serviceEnvironments))
-	serviceDir, environment := path.Split(FormatServiceName(serviceEnvironments[0]))
+	serviceDir, environment := path.Split(FormatServicePath(serviceEnvironments[0]))
 
 	environments := append([]string{environment}, serviceEnvironments[1:]...)
 	for _, environment := range environments {
-		serviceName := FormatServiceName(path.Join(serviceDir, environment))
-		servicePaths = append(servicePaths, serviceName)
+		servicePath := FormatServicePath(path.Join(serviceDir, environment))
+		servicePaths = append(servicePaths, servicePath)
 	}
 
 	return servicePaths
 }
 
-// FormatServiceName takes as input a short-hand service name and returns
-// the correct one, e.g. converting `service/name` to `/service/name`.
-func FormatServiceName(serviceName string) string {
+// FormatServicePath takes as input a short-hand service path and returns
+// the full one, ensuring a prefixed "/", and no suffix "/", e.g.
+// translating `service/name` to `/service/name`.
+func FormatServicePath(servicePath string) string {
 	// TODO: validate if valid service name
-	if !strings.HasPrefix(serviceName, "/") {
-		serviceName = fmt.Sprintf("/%s", serviceName)
+	if !strings.HasPrefix(servicePath, "/") {
+		servicePath = fmt.Sprintf("/%s", servicePath)
 	}
 
-	return strings.TrimRight(serviceName, "/")
+	return strings.TrimRight(servicePath, "/")
 }

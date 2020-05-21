@@ -17,7 +17,7 @@ import (
 )
 
 type ExecCommandInput struct {
-	ServiceNames       string
+	ServicePaths       string
 	Command            string
 	Args               []string
 	KeepAWSCredentials bool
@@ -29,7 +29,7 @@ func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log log
 	cmd := app.Command("exec", "Populates the environment with secrets from the given configurations")
 	cmd.Arg("service", "Name of the service(s)").
 		Required().
-		StringVar(&input.ServiceNames)
+		StringVar(&input.ServicePaths)
 
 	cmd.Arg("cmd", "Command to execute, defaults to $SHELL").
 		Default(os.Getenv("SHELL")).
@@ -52,8 +52,8 @@ func ConfigureExecCommand(ctx context.Context, app *kingpin.Application, log log
 func ExecCommand(ctx context.Context, input ExecCommandInput, log logger.Logger, storage storage.Storage) error {
 	config := make(map[string]string)
 
-	for _, serviceName := range confman.ParseServicePaths(input.ServiceNames) {
-		cm := confman.New(log, storage, serviceName)
+	for _, servicePath := range confman.ParseServicePaths(input.ServicePaths) {
+		cm := confman.New(log, storage, servicePath)
 		curConfig, err := cm.ReadAll(ctx)
 		if err != nil {
 			return nil

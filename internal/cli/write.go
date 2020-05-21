@@ -15,7 +15,7 @@ import (
 )
 
 type WriteCommandInput struct {
-	ServiceName string
+	ServicePath string
 	Key         string
 	Value       string
 	Format      string
@@ -27,7 +27,7 @@ func ConfigureWriteCommand(ctx context.Context, app *kingpin.Application, log lo
 	cmd := app.Command("write", "Writes a configuration")
 	cmd.Arg("service", "Name of the service").
 		Required().
-		StringVar(&input.ServiceName)
+		StringVar(&input.ServicePath)
 
 	cmd.Arg("key", "Name of the key").
 		Required().
@@ -47,7 +47,7 @@ func ConfigureWriteCommand(ctx context.Context, app *kingpin.Application, log lo
 }
 
 func WriteCommand(ctx context.Context, input WriteCommandInput, w io.Writer, log logger.Logger, storage storage.Storage) error {
-	cm := confman.New(log, storage, input.ServiceName)
+	cm := confman.New(log, storage, input.ServicePath)
 
 	var err error
 	value := input.Value
@@ -65,7 +65,7 @@ func WriteCommand(ctx context.Context, input WriteCommandInput, w io.Writer, log
 
 	if input.Format != formatText {
 		return outputFormat(input.Format, w, map[string]interface{}{
-			cm.ServiceName(): map[string]string{
+			cm.ServicePath(): map[string]string{
 				input.Key: value,
 			},
 		})

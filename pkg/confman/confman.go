@@ -35,8 +35,8 @@ type Confman interface {
 	// the service name.
 	FormatKeyPath(key string) string
 
-	// ServiceName returns the properly formatted service name
-	ServiceName() string
+	// ServicePath returns the properly formatted service name
+	ServicePath() string
 
 	MetadataKeys() []string
 
@@ -48,10 +48,10 @@ var ChamberCompatible bool = true
 type confman struct {
 	log         logger.Logger
 	storage     storage.Storage
-	serviceName string
+	servicePath string
 }
 
-func New(log logger.Logger, s storage.Storage, serviceName string) Confman {
+func New(log logger.Logger, s storage.Storage, servicePath string) Confman {
 	if ChamberCompatible {
 		s = storage.NewChamberCompatibility(log, s)
 	}
@@ -59,24 +59,24 @@ func New(log logger.Logger, s storage.Storage, serviceName string) Confman {
 	return &confman{
 		log:         log,
 		storage:     s,
-		serviceName: FormatServiceName(serviceName),
+		servicePath: FormatServicePath(servicePath),
 	}
 }
 
 func (c *confman) Write(ctx context.Context, key string, value string) error {
-	return c.storage.Write(ctx, c.serviceName, key, value)
+	return c.storage.Write(ctx, c.servicePath, key, value)
 }
 
 func (c *confman) WriteKeys(ctx context.Context, config map[string]string) error {
-	return c.storage.WriteKeys(ctx, c.serviceName, config)
+	return c.storage.WriteKeys(ctx, c.servicePath, config)
 }
 
 func (c *confman) Read(ctx context.Context, key string) (value string, _ error) {
-	return c.storage.Read(ctx, c.serviceName, key)
+	return c.storage.Read(ctx, c.servicePath, key)
 }
 
 func (c *confman) ReadKeys(ctx context.Context, keys []string) (map[string]string, error) {
-	config, err := c.storage.ReadKeys(ctx, c.serviceName, keys)
+	config, err := c.storage.ReadKeys(ctx, c.servicePath, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (c *confman) ReadKeys(ctx context.Context, keys []string) (map[string]strin
 }
 
 func (c *confman) ReadAll(ctx context.Context) (map[string]string, error) {
-	config, err := c.storage.ReadAll(ctx, c.serviceName)
+	config, err := c.storage.ReadAll(ctx, c.servicePath)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func (c *confman) ReadAll(ctx context.Context) (map[string]string, error) {
 }
 
 func (c *confman) ReadAllMetadata(ctx context.Context) ([]storage.KeyMetadata, error) {
-	keyMetadata, err := c.storage.ReadAllMetadata(ctx, c.serviceName)
+	keyMetadata, err := c.storage.ReadAllMetadata(ctx, c.servicePath)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (c *confman) Move(ctx context.Context, dst Confman) error {
 		keys = append(keys, key)
 	}
 
-	return c.storage.DeleteKeys(ctx, c.serviceName, keys)
+	return c.storage.DeleteKeys(ctx, c.servicePath, keys)
 }
 
 func (c *confman) Copy(ctx context.Context, dst Confman) error {
@@ -132,7 +132,7 @@ func (c *confman) copy(ctx context.Context, dst Confman) (map[string]string, err
 	default:
 	}
 
-	config, err := c.storage.ReadAll(ctx, c.serviceName)
+	config, err := c.storage.ReadAll(ctx, c.servicePath)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (c *confman) Define(ctx context.Context, config map[string]string) error {
 	newKeys, _ := mapy.StringKeys(config)
 	newKeysLookup := stringy.ToSet(newKeys)
 
-	currentConfig, err := c.storage.ReadAll(ctx, c.serviceName)
+	currentConfig, err := c.storage.ReadAll(ctx, c.servicePath)
 	if err != nil {
 		return err
 	}
@@ -176,24 +176,24 @@ func (c *confman) Define(ctx context.Context, config map[string]string) error {
 
 	// TODO: ask user before deleting
 
-	err = c.storage.WriteKeys(ctx, c.serviceName, config)
+	err = c.storage.WriteKeys(ctx, c.servicePath, config)
 	if err != nil {
 		return err
 	}
 
-	return c.storage.DeleteKeys(ctx, c.serviceName, keysToDelete)
+	return c.storage.DeleteKeys(ctx, c.servicePath, keysToDelete)
 }
 
 func (c *confman) Delete(ctx context.Context, key string) error {
-	return c.storage.Delete(ctx, c.ServiceName(), key)
+	return c.storage.Delete(ctx, c.ServicePath(), key)
 }
 
 func (c *confman) DeleteKeys(ctx context.Context, keys []string) error {
-	return c.storage.DeleteKeys(ctx, c.serviceName, keys)
+	return c.storage.DeleteKeys(ctx, c.servicePath, keys)
 }
 
 func (c *confman) DeleteAll(ctx context.Context) error {
-	config, err := c.storage.ReadAll(ctx, c.serviceName)
+	config, err := c.storage.ReadAll(ctx, c.servicePath)
 	if err != nil {
 		return err
 	}
@@ -203,15 +203,15 @@ func (c *confman) DeleteAll(ctx context.Context) error {
 		return err
 	}
 
-	return c.storage.DeleteKeys(ctx, c.serviceName, keys)
+	return c.storage.DeleteKeys(ctx, c.servicePath, keys)
 }
 
-func (c *confman) ServiceName() string {
-	return c.serviceName
+func (c *confman) ServicePath() string {
+	return c.servicePath
 }
 
 func (c *confman) FormatKeyPath(key string) string {
-	return path.Join(c.serviceName, key)
+	return path.Join(c.servicePath, key)
 }
 
 func (c *confman) MetadataKeys() []string {
@@ -219,5 +219,5 @@ func (c *confman) MetadataKeys() []string {
 }
 
 func (c *confman) String() string {
-	return fmt.Sprintf("Confman(service='%s', storage='%s')", c.serviceName, c.storage)
+	return fmt.Sprintf("Confman(service='%s', storage='%s')", c.servicePath, c.storage)
 }

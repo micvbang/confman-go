@@ -16,7 +16,7 @@ import (
 )
 
 type ListCommandInput struct {
-	ServiceNames string
+	ServicePaths string
 	Key          string
 	Format       string
 	Reveal       bool
@@ -29,7 +29,7 @@ func ConfigureListCommand(ctx context.Context, app *kingpin.Application, log log
 	cmd := app.Command("list", "Lists configuration")
 	cmd.Arg("service", "Name of the service").
 		Required().
-		StringVar(&input.ServiceNames)
+		StringVar(&input.ServicePaths)
 
 	cmd.Flag("reveal", "Reveal values").
 		Envar("CONFMAN_REVEAL_VALUES").
@@ -47,21 +47,21 @@ func ListCommand(ctx context.Context, input ListCommandInput, w io.Writer, log l
 	serviceConfigKeys := make(map[string][]storage.KeyMetadata)
 
 	var metadataKeys []string
-	serviceNames := confman.ParseServicePaths(input.ServiceNames)
-	for _, serviceName := range serviceNames {
-		cm := confman.New(log, s, serviceName)
+	servicePaths := confman.ParseServicePaths(input.ServicePaths)
+	for _, servicePath := range servicePaths {
+		cm := confman.New(log, s, servicePath)
 		configKeys, err := cm.ReadAllMetadata(ctx)
 		if err != nil {
 			return err
 		}
-		serviceConfigKeys[serviceName] = configKeys
+		serviceConfigKeys[servicePath] = configKeys
 		metadataKeys = cm.MetadataKeys()
 	}
 
 	if !input.Reveal {
-		for serviceName, configKeys := range serviceConfigKeys {
+		for servicePath, configKeys := range serviceConfigKeys {
 			for i := range configKeys {
-				serviceConfigKeys[serviceName][i].Value = "***"
+				serviceConfigKeys[servicePath][i].Value = "***"
 			}
 		}
 	}
@@ -74,14 +74,14 @@ func ListCommand(ctx context.Context, input ListCommandInput, w io.Writer, log l
 
 	i := 0
 	numNewlines := len(serviceConfigKeys) - 1
-	for serviceName, configKeys := range serviceConfigKeys {
+	for servicePath, configKeys := range serviceConfigKeys {
 		headers := append([]string{"Key", "Value"}, metadataKeys...)
 		headerUnderlining := make([]string, len(headers))
 		for i, key := range headers {
 			headerUnderlining[i] = strings.Repeat("=", len(key)+1)
 		}
 
-		fmt.Fprintf(tw, "Config for '%s'\n", serviceName)
+		fmt.Fprintf(tw, "Config for '%s'\n", servicePath)
 		fmt.Fprintln(tw, strings.Join(headers, "\t"))
 		fmt.Fprintln(tw, strings.Join(headerUnderlining, "\t"))
 

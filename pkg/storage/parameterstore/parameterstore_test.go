@@ -20,13 +20,13 @@ import (
 // expected value when the key to be read exists in AWS Parameter Store.
 func TestParameterStoreReadExists(t *testing.T) {
 	const (
-		serviceName   = "/service/env"
+		servicePath   = "/service/env"
 		key           = "key"
 		expectedValue = "the value"
 	)
 
 	ssmMock := &parameterstore.MockSSMClient{}
-	parameters := makeParameters(serviceName, map[string]string{
+	parameters := makeParameters(servicePath, map[string]string{
 		key: expectedValue,
 	})
 	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
@@ -36,7 +36,7 @@ func TestParameterStoreReadExists(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotValue, err := ps.Read(ctx, serviceName, key)
+	gotValue, err := ps.Read(ctx, servicePath, key)
 
 	require.NoError(t, err)
 	require.Equal(t, expectedValue, gotValue)
@@ -63,13 +63,13 @@ func TestParameterStoreReadNotExists(t *testing.T) {
 // not equal to the input.
 func TestParameterStoreWriteExistsNotEqual(t *testing.T) {
 	const (
-		serviceName = "/service/env"
+		servicePath = "/service/env"
 		key         = "key"
 		value       = "the value"
 	)
 
 	ssmMock := &parameterstore.MockSSMClient{}
-	parameters := makeParameters(serviceName, map[string]string{key: "not value"})
+	parameters := makeParameters(servicePath, map[string]string{key: "not value"})
 
 	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
 		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
@@ -82,7 +82,7 @@ func TestParameterStoreWriteExistsNotEqual(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.Write(ctx, serviceName, key, value)
+	err := ps.Write(ctx, servicePath, key, value)
 
 	require.NoError(t, err)
 }
@@ -92,13 +92,13 @@ func TestParameterStoreWriteExistsNotEqual(t *testing.T) {
 // and the stored value is equal to the input.
 func TestParameterStoreWriteExistsEqual(t *testing.T) {
 	const (
-		serviceName = "/service/env"
+		servicePath = "/service/env"
 		key         = "key"
 		value       = "the value"
 	)
 
 	ssmMock := &parameterstore.MockSSMClient{}
-	parameters := makeParameters(serviceName, map[string]string{key: value})
+	parameters := makeParameters(servicePath, map[string]string{key: value})
 
 	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
 		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
@@ -109,7 +109,7 @@ func TestParameterStoreWriteExistsEqual(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.Write(ctx, serviceName, key, value)
+	err := ps.Write(ctx, servicePath, key, value)
 
 	require.NoError(t, err)
 }
@@ -119,7 +119,7 @@ func TestParameterStoreWriteExistsEqual(t *testing.T) {
 // exist.
 func TestParameterStoreWriteNotExists(t *testing.T) {
 	const (
-		serviceName = "/service/env"
+		servicePath = "/service/env"
 		key         = "key"
 		value       = "the value"
 	)
@@ -137,7 +137,7 @@ func TestParameterStoreWriteNotExists(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.Write(ctx, serviceName, key, value)
+	err := ps.Write(ctx, servicePath, key, value)
 
 	require.NoError(t, err)
 }
@@ -146,7 +146,7 @@ func TestParameterStoreWriteNotExists(t *testing.T) {
 // correctly for services with a single page worth of AWS Parameter Store
 // parameters.
 func TestParameterStoreReadAllServiceExists(t *testing.T) {
-	const serviceName = "/service-name"
+	const servicePath = "/service-name"
 
 	ssmMock := &parameterstore.MockSSMClient{}
 
@@ -156,13 +156,13 @@ func TestParameterStoreReadAllServiceExists(t *testing.T) {
 		"var3": "val3",
 	}
 
-	mockGetParametersByPathPagesWithContext(ssmMock, serviceName, expectedConfig).Once()
+	mockGetParametersByPathPagesWithContext(ssmMock, servicePath, expectedConfig).Once()
 
 	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotConfig, err := ps.ReadAll(ctx, serviceName)
+	gotConfig, err := ps.ReadAll(ctx, servicePath)
 	require.NoError(t, err)
 
 	requireConfigEqual(t, expectedConfig, gotConfig)
@@ -172,7 +172,7 @@ func TestParameterStoreReadAllServiceExists(t *testing.T) {
 // are retrieved corrcetly for services with multiple AWS Parameter Store pages
 // worth of parameters.
 func TestParameterStoreReadAllServiceExistsMultiplePages(t *testing.T) {
-	const serviceName = "/service-name"
+	const servicePath = "/service-name"
 
 	ssmMock := &parameterstore.MockSSMClient{}
 
@@ -184,7 +184,7 @@ func TestParameterStoreReadAllServiceExistsMultiplePages(t *testing.T) {
 	config2 := map[string]string{
 		"var4": "val4",
 	}
-	mockGetParametersByPathPagesWithContext(ssmMock, serviceName, config1, config2).Once()
+	mockGetParametersByPathPagesWithContext(ssmMock, servicePath, config1, config2).Once()
 
 	defer ssmMock.AssertExpectations(t)
 
@@ -192,7 +192,7 @@ func TestParameterStoreReadAllServiceExistsMultiplePages(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotConfig, err := ps.ReadAll(ctx, serviceName)
+	gotConfig, err := ps.ReadAll(ctx, servicePath)
 	require.NoError(t, err)
 
 	expectedConfig := map[string]string{}
@@ -209,7 +209,7 @@ func TestParameterStoreReadAllServiceExistsMultiplePages(t *testing.T) {
 // TestParameterStoreReadAllServiceNotExists verifies that ReadAll returns
 // storage.ErrConfigNotFound when given a non-existing service name.
 func TestParameterStoreReadAllServiceNotExists(t *testing.T) {
-	const serviceName = "/service/name"
+	const servicePath = "/service/name"
 	ssmMock := &parameterstore.MockSSMClient{}
 	ssmMock.On("GetParametersByPathPagesWithContext", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(&ssm.ParameterNotFound{})
@@ -218,7 +218,7 @@ func TestParameterStoreReadAllServiceNotExists(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	_, err := ps.ReadAll(ctx, serviceName)
+	_, err := ps.ReadAll(ctx, servicePath)
 	require.Equal(t, storage.ErrConfigNotFound, err)
 }
 
@@ -226,7 +226,7 @@ func TestParameterStoreReadAllServiceNotExists(t *testing.T) {
 // requested keys when they all exist in AWS Parameter Store.
 func TestParameterStoreReadKeysAllExist(t *testing.T) {
 	const (
-		serviceName = "/service/env"
+		servicePath = "/service/env"
 	)
 
 	const numKeys = 5
@@ -238,7 +238,7 @@ func TestParameterStoreReadKeysAllExist(t *testing.T) {
 	}
 
 	ssmMock := &parameterstore.MockSSMClient{}
-	parameters := makeParameters(serviceName, expectedConfig)
+	parameters := makeParameters(servicePath, expectedConfig)
 	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
 		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
 
@@ -246,7 +246,7 @@ func TestParameterStoreReadKeysAllExist(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotValues, err := ps.ReadKeys(ctx, serviceName, expectedKeys)
+	gotValues, err := ps.ReadKeys(ctx, servicePath, expectedKeys)
 	require.NoError(t, err)
 
 	require.Equal(t, len(expectedConfig), len(gotValues))
@@ -259,7 +259,7 @@ func TestParameterStoreReadKeysAllExist(t *testing.T) {
 // result set and no error when attempting to read zero keys.
 func TestParameterStoreReadKeysNoKeys(t *testing.T) {
 	const (
-		serviceName = "/service/env"
+		servicePath = "/service/env"
 	)
 
 	ssmMock := &parameterstore.MockSSMClient{}
@@ -268,7 +268,7 @@ func TestParameterStoreReadKeysNoKeys(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotValues, err := ps.ReadKeys(ctx, serviceName, []string{})
+	gotValues, err := ps.ReadKeys(ctx, servicePath, []string{})
 	require.NoError(t, err)
 	require.Equal(t, 0, len(gotValues))
 }
@@ -277,11 +277,11 @@ func TestParameterStoreReadKeysNoKeys(t *testing.T) {
 // when at least one parameter is invalid.
 func TestParameterStoreReadKeysOneNotExist(t *testing.T) {
 	const (
-		serviceName    = "/service/env"
+		servicePath    = "/service/env"
 		nonExistingKey = "non-existing-key"
 	)
 
-	parameters := makeParameters(serviceName, map[string]string{"var1": "val1"})
+	parameters := makeParameters(servicePath, map[string]string{"var1": "val1"})
 	ssmMock := &parameterstore.MockSSMClient{}
 	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
 		Return(&ssm.GetParametersOutput{
@@ -293,7 +293,7 @@ func TestParameterStoreReadKeysOneNotExist(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	gotValues, err := ps.ReadKeys(ctx, serviceName, []string{nonExistingKey})
+	gotValues, err := ps.ReadKeys(ctx, servicePath, []string{nonExistingKey})
 	require.Equal(t, storage.ErrConfigNotFound, err)
 	require.Equal(t, 0, len(gotValues))
 }
@@ -304,10 +304,10 @@ func TestParameterStoreReadKeysOneNotExist(t *testing.T) {
 // deletion.
 func TestDeleteExpectedKey(t *testing.T) {
 	const (
-		serviceName = "/service/env"
+		servicePath = "/service/env"
 		key         = "thekey"
 	)
-	keyPath := path.Join(serviceName, key)
+	keyPath := path.Join(servicePath, key)
 	parameters := []*string{&keyPath}
 
 	ssmMock := &parameterstore.MockSSMClient{}
@@ -318,7 +318,7 @@ func TestDeleteExpectedKey(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.Delete(ctx, serviceName, key)
+	err := ps.Delete(ctx, servicePath, key)
 	require.NoError(t, err)
 }
 
@@ -326,12 +326,12 @@ func TestDeleteExpectedKey(t *testing.T) {
 // for deletion.
 func TestDeleteKeysExpectedKeys(t *testing.T) {
 	const (
-		serviceName = "/service/env"
+		servicePath = "/service/env"
 		key1        = "first_key"
 		key2        = "second_key"
 	)
-	key1Path := path.Join(serviceName, key1)
-	key2Path := path.Join(serviceName, key2)
+	key1Path := path.Join(servicePath, key1)
+	key2Path := path.Join(servicePath, key2)
 	parameters := []*string{&key1Path, &key2Path}
 
 	ssmMock := &parameterstore.MockSSMClient{}
@@ -342,7 +342,7 @@ func TestDeleteKeysExpectedKeys(t *testing.T) {
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
-	err := ps.DeleteKeys(ctx, serviceName, []string{key1, key2})
+	err := ps.DeleteKeys(ctx, servicePath, []string{key1, key2})
 	require.NoError(t, err)
 }
 
@@ -353,7 +353,7 @@ func requireConfigEqual(t *testing.T, expected, got map[string]string) {
 	}
 }
 
-func mockGetParametersByPathPagesWithContext(ssmMock *parameterstore.MockSSMClient, serviceName string, configPages ...map[string]string) *mock.Call {
+func mockGetParametersByPathPagesWithContext(ssmMock *parameterstore.MockSSMClient, servicePath string, configPages ...map[string]string) *mock.Call {
 	return ssmMock.On("GetParametersByPathPagesWithContext", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(nil).
 		Run(func(args mock.Arguments) {
@@ -361,7 +361,7 @@ func mockGetParametersByPathPagesWithContext(ssmMock *parameterstore.MockSSMClie
 
 			for i, config := range configPages {
 				output := &ssm.GetParametersByPathOutput{
-					Parameters: makeParameters(serviceName, config),
+					Parameters: makeParameters(servicePath, config),
 				}
 
 				lastPage := i == len(configPages)-1
@@ -370,12 +370,12 @@ func mockGetParametersByPathPagesWithContext(ssmMock *parameterstore.MockSSMClie
 		})
 }
 
-func makeParameters(serviceName string, config map[string]string) []*ssm.Parameter {
+func makeParameters(servicePath string, config map[string]string) []*ssm.Parameter {
 	parameters := make([]*ssm.Parameter, 0, len(config))
 
 	for key, value := range config {
 		parameters = append(parameters, &ssm.Parameter{
-			Name:  aws.String(path.Join(serviceName, key)),
+			Name:  aws.String(path.Join(servicePath, key)),
 			Value: aws.String(value),
 		})
 	}

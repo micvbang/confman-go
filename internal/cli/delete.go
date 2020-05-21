@@ -14,7 +14,7 @@ import (
 )
 
 type DeleteCommandInput struct {
-	ServiceName string
+	ServicePath string
 	Keys        []string
 	Format      string
 	Quiet       bool
@@ -27,7 +27,7 @@ func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log l
 	cmd := app.Command("delete", "Deletes configuration")
 	cmd.Arg("service", "Name of the service").
 		Required().
-		StringVar(&input.ServiceName)
+		StringVar(&input.ServicePath)
 
 	cmd.Arg("keys", "Keys to delete").
 		StringsVar(&input.Keys)
@@ -44,7 +44,7 @@ func ConfigureDeleteCommand(ctx context.Context, app *kingpin.Application, log l
 }
 
 func DeleteCommand(ctx context.Context, input DeleteCommandInput, w io.Writer, log logger.Logger, storage storage.Storage) error {
-	cm := confman.New(log, storage, input.ServiceName)
+	cm := confman.New(log, storage, input.ServicePath)
 
 	if !input.DeleteAll {
 		err := cm.DeleteKeys(ctx, input.Keys)
@@ -67,7 +67,7 @@ func DeleteCommand(ctx context.Context, input DeleteCommandInput, w io.Writer, l
 
 	if input.Format != formatText {
 		return outputFormat(input.Format, w, map[string]interface{}{
-			cm.ServiceName(): input.Keys,
+			cm.ServicePath(): input.Keys,
 		})
 	}
 
