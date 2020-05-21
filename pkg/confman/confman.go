@@ -11,6 +11,8 @@ import (
 	"github.com/micvbang/go-helpy/stringy"
 )
 
+//go:generate mockery -inpkg -name Confman -case=underscore
+
 type Confman interface {
 	Write(ctx context.Context, key string, value string) error
 	WriteKeys(ctx context.Context, config map[string]string) error
