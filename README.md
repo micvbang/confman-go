@@ -9,6 +9,7 @@
     + [Environment variables](#environment-variables)
   * [Service interface](#service-interface)
 
+[![Build Status](https://travis-ci.com/micvbang/confman-go.svg?branch=master)](https://travis-ci.com/github/micvbang/confman-go)
 
 # About
 
