@@ -4,6 +4,8 @@ import (
 	"context"
 )
 
+//go:generate mockery -inpkg -name Storage -case=underscore
+
 // Storage defines the methods that must be implemented by a storage driver.
 type Storage interface {
 	Write(ctx context.Context, servicePath string, key string, value string) error
