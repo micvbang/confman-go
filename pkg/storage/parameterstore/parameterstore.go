@@ -15,6 +15,7 @@ import (
 	"github.com/micvbang/confman-go/pkg/storage"
 	"github.com/micvbang/go-helpy/inty"
 	"github.com/micvbang/go-helpy/mapy"
+	"github.com/prometheus/common/log"
 )
 
 // ParameterStore implements storage.Storage using Parameter Store from
@@ -71,12 +72,12 @@ func (ps *ParameterStore) Write(ctx context.Context, servicePath string, key str
 
 func (ps *ParameterStore) WriteKeys(ctx context.Context, servicePath string, config map[string]string) error {
 	if len(config) == 0 {
-		ps.log.Warnf("WriteKeys called with 0 keys")
+		log.Warnf("WriteKeys called with 0 keys")
 		return nil
 	}
 
 	keys, _ := mapy.StringKeys(config)
-	ps.log.Debugf("Attempting to write keys %v", keys)
+	log.Debugf("Attempting to write keys %v %v", servicePath, keys)
 
 	curConfig, err := ps.ReadKeys(ctx, servicePath, keys)
 	if err != nil && err != storage.ErrConfigNotFound {
@@ -103,7 +104,7 @@ func (ps *ParameterStore) WriteKeys(ctx context.Context, servicePath string, con
 		}
 	}
 
-	ps.log.Debugf("Wrote keys %v", keys)
+	log.Debugf("Wrote keys %v %v", servicePath, keys)
 
 	return nil
 }
@@ -122,7 +123,7 @@ const maxKeysPerRequest = 10
 
 func (ps *ParameterStore) ReadKeys(ctx context.Context, servicePath string, keys []string) (map[string]string, error) {
 	if len(keys) == 0 {
-		ps.log.Warnf("ReadKeys called with 0 keys")
+		log.Warnf("ReadKeys called with 0 keys")
 		return nil, nil
 	}
 
@@ -158,11 +159,13 @@ func (ps *ParameterStore) keyMetadataToKeyMetadata(readKey keyMetadata) storage.
 }
 
 func (ps *ParameterStore) readKeys(ctx context.Context, servicePath string, keys []string) (map[string]string, error) {
+	log := ps.populateLogger(servicePath)
+
 	if len(keys) > maxKeysPerRequest {
 		return nil, storage.ErrTooManyKeys
 	}
 
-	ps.log.Debugf("Attempting to read keys %v", keys)
+	log.Debugf("Attempting to read keys %v", keys)
 
 	output, err := ps.ssmClient.GetParametersWithContext(ctx, &ssm.GetParametersInput{
 		Names:          ps.keysToParameterNames(servicePath, keys),
@@ -185,13 +188,13 @@ func (ps *ParameterStore) readKeys(ctx context.Context, servicePath string, keys
 		config[ps.parameterBaseName(parameter)] = aws.StringValue(parameter.Value)
 	}
 
-	ps.log.Debugf("Read keys %v", keys)
+	log.Debugf("Read keys %s %v", servicePath, keys)
 
 	return config, nil
 }
 
 func (ps *ParameterStore) ReadAll(ctx context.Context, servicePath string) (map[string]string, error) {
-	log := ps.log.WithField("service_name", servicePath)
+	log := ps.populateLogger(servicePath)
 
 	log.Debugf("Attempting to read all")
 
@@ -248,7 +251,7 @@ type keyMetadata struct {
 }
 
 func (ps *ParameterStore) readAllKeyMetadata(ctx context.Context, servicePath string) ([]keyMetadata, error) {
-	log := ps.log.WithField("service_name", servicePath)
+	log := ps.populateLogger(servicePath)
 
 	log.Debugf("Attempting to read all metadata")
 
@@ -296,17 +299,20 @@ func (ps *ParameterStore) readAllKeyMetadata(ctx context.Context, servicePath st
 }
 
 func (ps *ParameterStore) Delete(ctx context.Context, servicePath string, key string) error {
-	return ps.deleteKeys(ctx, servicePath, []string{key})
+	log := ps.populateLogger(servicePath)
+	return ps.deleteKeys(ctx, log, servicePath, []string{key})
 }
 
 func (ps *ParameterStore) DeleteKeys(ctx context.Context, servicePath string, keys []string) error {
+	log := ps.populateLogger(servicePath)
+
 	if len(keys) == 0 {
-		ps.log.Warnf("DeleteKeys called with 0 keys")
+		log.Warnf("DeleteKeys called with 0 keys")
 		return nil
 	}
 
 	for _, batchKeys := range ps.batchKeys(keys, maxKeysPerRequest) {
-		err := ps.deleteKeys(ctx, servicePath, batchKeys)
+		err := ps.deleteKeys(ctx, log, servicePath, batchKeys)
 		if err != nil {
 			return err
 		}
@@ -315,11 +321,9 @@ func (ps *ParameterStore) DeleteKeys(ctx context.Context, servicePath string, ke
 	return nil
 }
 
-func (ps *ParameterStore) deleteKeys(ctx context.Context, servicePath string, keys []string) error {
-	log := ps.log.WithField("service_name", servicePath)
-
+func (ps *ParameterStore) deleteKeys(ctx context.Context, log logger.Logger, servicePath string, keys []string) error {
 	if len(keys) == 0 {
-		ps.log.Warnf("DeleteKeys called with 0 keys")
+		log.Warnf("DeleteKeys called with 0 keys")
 		return nil
 	}
 
@@ -417,4 +421,8 @@ func (ps *ParameterStore) MetadataKeys() []string {
 		"last_modified_date",
 		"last_modified_user",
 	}
+}
+
+func (ps *ParameterStore) populateLogger(servicePath string) logger.Logger {
+	return ps.log.WithField("service_path", servicePath)
 }
