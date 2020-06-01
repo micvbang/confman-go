@@ -84,6 +84,13 @@ func (c *ChamberCompatibility) MetadataKeys() []string {
 	return c.storage.MetadataKeys()
 }
 
+func (c *ChamberCompatibility) PathRead(ctx context.Context, path string, recursive bool) (map[string]map[string]string, error) {
+	c.log.Debugf("PathRead(ctx, \"%s\", %v)", path, recursive)
+
+	servicePathConfigs, err := c.storage.PathRead(ctx, path, recursive)
+	return c.chamberServicePathConfigToUpper(servicePathConfigs), err
+}
+
 func (c *ChamberCompatibility) String() string {
 	return fmt.Sprintf("ChamberCompatibility(%s)", c.storage)
 }
@@ -143,4 +150,17 @@ func (c *ChamberCompatibility) chamberConfigToUpper(config map[string]string) ma
 	}
 
 	return newConfig
+}
+
+func (c *ChamberCompatibility) chamberServicePathConfigToUpper(servicePathConfig map[string]map[string]string) map[string]map[string]string {
+	newServicePathConfig := make(map[string]map[string]string, len(servicePathConfig))
+	for servicePath, config := range servicePathConfig {
+		newConfig := make(map[string]string, len(config))
+		for key, value := range config {
+			newConfig[c.chamberKeyToUpper(key)] = value
+		}
+		newServicePathConfig[servicePath] = newConfig
+	}
+
+	return newServicePathConfig
 }

@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/99designs/aws-vault v4.5.1+incompatible
 	github.com/aws/aws-sdk-go v1.29.12
+	github.com/julienschmidt/httprouter v1.2.0
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/micvbang/go-helpy v0.0.17
 	github.com/prometheus/common v0.4.0

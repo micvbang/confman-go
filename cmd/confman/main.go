@@ -37,6 +37,7 @@ func run(args []string, exit func(int)) {
 	cli.ConfigureDeleteCommand(ctx, app, log)
 	cli.ConfigureExecCommand(ctx, app, log)
 	cli.ConfigureDeployCommand(ctx, app, log)
+	cli.ConfigureServeCommand(ctx, app, log)
 
 	kingpin.MustParse(app.Parse(args))
 }

@@ -20,6 +20,8 @@ type Storage interface {
 	Delete(ctx context.Context, servicePath string, key string) error
 	DeleteKeys(ctx context.Context, servicePath string, keys []string) error
 
+	PathRead(ctx context.Context, path string, recursive bool) (map[string]map[string]string, error)
+
 	MetadataKeys() []string
 
 	// History?

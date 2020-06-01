@@ -357,6 +357,36 @@ func (ps *ParameterStore) deleteKeys(ctx context.Context, log logger.Logger, ser
 	return nil
 }
 
+func (ps *ParameterStore) PathRead(ctx context.Context, servicePath string, recursive bool) (map[string]map[string]string, error) {
+	servicePathConfig := map[string]map[string]string{}
+
+	err := ps.ssmClient.GetParametersByPathPagesWithContext(ctx, &ssm.GetParametersByPathInput{
+		Path:             aws.String(servicePath),
+		Recursive:        aws.Bool(recursive),
+		WithDecryption:   aws.Bool(true),
+		MaxResults:       aws.Int64(maxKeysPerRequest),
+		ParameterFilters: nil,
+		NextToken:        nil,
+	}, func(output *ssm.GetParametersByPathOutput, b bool) bool {
+		for _, p := range output.Parameters {
+			servicePath, key := path.Split(*p.Name)
+
+			config, exists := servicePathConfig[servicePath]
+			if !exists {
+				config = map[string]string{}
+				servicePathConfig[servicePath] = config
+			}
+			config[key] = aws.StringValue(p.Value)
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return servicePathConfig, nil
+}
+
 func (ps *ParameterStore) parameterPath(servicePath string, key string) string {
 	return path.Join(servicePath, key)
 }
