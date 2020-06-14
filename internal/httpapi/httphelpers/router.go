@@ -1,6 +1,7 @@
 package httphelpers
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -73,8 +74,12 @@ func (r *router) addRoute(method string, route string, h http.HandlerFunc, mw ..
 	switch method {
 	case "GET":
 		m = r.GET
+	case "DELETE":
+		m = r.DELETE
 	case "OPTIONS":
 		m = r.OPTIONS
+	default:
+		panic(fmt.Sprintf("Router: HTTP method %s not handled yet", method))
 	}
 
 	m(route, httpParametersWrapper(logger(h)))

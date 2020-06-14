@@ -8,6 +8,7 @@ import (
 // AddRoutes registers and maps all HTTP endpoints to their respective routes.
 func AddRoutes(r httphelpers.Router, d Dependencies) httphelpers.Router {
 	r.AddRoute("GET", "/service_paths", NewServicePathConfigLister(d.Storage))
+	r.AddRoute("DELETE", "/service_paths/keys", NewServicePathKeysDeleter(d.Storage))
 
 	r.ConfigureOPTIONS()
 

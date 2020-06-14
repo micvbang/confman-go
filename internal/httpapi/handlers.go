@@ -29,3 +29,22 @@ func NewServicePathConfigLister(s storage.Storage) http.HandlerFunc {
 		return httphelpers.WriteJSON(w, servicePathConfigs)
 	})
 }
+
+func NewServicePathKeysDeleter(s storage.Storage) http.HandlerFunc {
+	return httphelpers.StatusHandler(func(w http.ResponseWriter, r *http.Request) httphelpers.Status {
+		input := ServicePathConfigDeleteInput{}
+		err := httphelpers.ParseJSON(r, &input)
+		if err != nil {
+			return httphelpers.StatusBadRequest
+		}
+
+		ctx := context.Background()
+		return s.DeleteKeys(ctx, input.ServicePath, input.Keys)
+	})
+
+}
+
+type ServicePathConfigDeleteInput struct {
+	ServicePath string   `json:"path"`
+	Keys        []string `json:"keys"`
+}

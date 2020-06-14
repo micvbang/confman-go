@@ -9,10 +9,40 @@
       </v-card-text>
     </v-card>
 
-    <v-expansion-panels focusable>
+    <v-expansion-panels v-show="!loading" focusable>
       <v-expansion-panel v-for="servicePath in filteredServicePaths" :key="servicePath">
         <v-expansion-panel-header>{{servicePath}}</v-expansion-panel-header>
         <v-expansion-panel-content>
+          <v-dialog v-model="deleteDialog" width="500">
+            <template v-slot:activator="{ on, attrs }">
+              <v-col class="text-right">
+                <v-btn small color="error" v-bind="attrs" v-on="on">Delete</v-btn>
+              </v-col>
+            </template>
+            <v-card>
+              <v-card-title class="headline grey lighten-2" primary-title>Delete</v-card-title>
+
+              <v-card-text>
+                You are about to delete all ({{ Object.keys(servicePathConfigs[servicePath]).length }}) keys configuration in
+                <br />
+                <b>{{ servicePath }}</b>
+              </v-card-text>
+
+              <v-divider></v-divider>
+
+              <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn
+                  color="primary"
+                  text
+                  @click="servicePathConfigDeleteKeys(servicePath); deleteDialog = false"
+                  :loading="deleteLoading"
+                >Delete</v-btn>
+                <v-btn color="secondary" text @click="deleteDialog = false">Cancel</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
+
           <v-data-table
             :headers="[
                         {text: 'Key', align: 'start', value: 'key'},
@@ -57,16 +87,29 @@ export default {
         lst.push({ key: key, value: servicePathConfig[key] });
       }
       return lst;
+    },
+
+    async servicePathConfigDeleteKeys(servicePath) {
+      this.deleteLoading = true;
+      const keys = Object.keys(this.servicePathConfigs[servicePath]);
+      await this.client.deleteServicePathKeys(servicePath, keys);
+      this.deleteLoading = false;
+
+      // TODO: this is expensive if there are many configs
+      await this.loadServicePathConfigs();
+    },
+
+    async loadServicePathConfigs() {
+      this.loading = true;
+      this.servicePathConfigs = await this.client.getServicePathConfigs();
+      this.servicePaths = Object.keys(this.servicePathConfigs).sort();
+      this.loading = false;
     }
   },
 
   async created() {
     this.client = new ConfmanClient();
-
-    this.servicePathConfigs = await this.client.getServicePathConfigs();
-    this.loading = false;
-
-    this.servicePaths = Object.keys(this.servicePathConfigs).sort();
+    await this.loadServicePathConfigs();
   },
 
   data: function() {
@@ -75,7 +118,9 @@ export default {
       servicePathFilter: "",
       servicePathConfigs: {},
       servicePaths: [],
-      loading: true
+      loading: true,
+      deleteDialog: false,
+      deleteLoading: false
     };
   }
 };
