@@ -49,10 +49,29 @@
                         {text: 'Value', align: 'start', value: 'value'}
                       ]"
             :items="servicePathConfigToDataTableItems(servicePathConfigs[servicePath])"
-          ></v-data-table>
+          >
+            <template v-slot:item.value="props">
+              <v-edit-dialog
+                large
+                persistent
+                @save="servicePathConfigWriteKey(servicePath, props.item.key, props.item.value)"
+              >
+                <div>{{ props.item.value }}</div>
+                <template v-slot:input>
+                  <v-text-field v-model="props.item.value" label="Edit" single-line autofocus></v-text-field>
+                </template>
+              </v-edit-dialog>
+            </template>
+          </v-data-table>
         </v-expansion-panel-content>
       </v-expansion-panel>
     </v-expansion-panels>
+    <v-snackbar v-model="snackVisible" :timeout="3000" :color="snackColor">
+      {{ snackText }}
+      <template v-slot:action="{ attrs }">
+        <v-btn v-bind="attrs" text multiline @click="snackVisible = false">Close</v-btn>
+      </template>
+    </v-snackbar>
   </div>
 </template>
 
@@ -92,11 +111,21 @@ export default {
     async servicePathConfigDeleteKeys(servicePath) {
       this.deleteLoading = true;
       const keys = Object.keys(this.servicePathConfigs[servicePath]);
-      await this.client.deleteServicePathKeys(servicePath, keys);
+      const success = await this.client.deleteServicePathKeys(
+        servicePath,
+        keys
+      );
+
       this.deleteLoading = false;
 
       // TODO: this is expensive if there are many configs
       await this.loadServicePathConfigs();
+
+      if (success) {
+        this.setSnackMessage("success", `Deleted ${servicePath}`);
+      } else {
+        this.setSnackMessage("error", `Failed to delete ${servicePath}`);
+      }
     },
 
     async loadServicePathConfigs() {
@@ -104,6 +133,30 @@ export default {
       this.servicePathConfigs = await this.client.getServicePathConfigs();
       this.servicePaths = Object.keys(this.servicePathConfigs).sort();
       this.loading = false;
+    },
+
+    setSnackMessage(color, message) {
+      this.snackVisible = true;
+      this.snackText = message;
+      this.snackColor = color;
+    },
+
+    async servicePathConfigWriteKey(servicePath, key, value) {
+      const success = await this.client.writeServicePathKey(
+        servicePath,
+        key,
+        value
+      );
+
+      const newValue = await this.client.readServicePathKey(servicePath, key);
+      this.servicePathConfigs[servicePath][key] = newValue;
+      this.servicePaths = Object.keys(this.servicePathConfigs).sort();
+
+      if (success) {
+        this.setSnackMessage("success", `${servicePath}/${key} saved`);
+      } else {
+        this.setSnackMessage("error", `Failed to save ${servicePath}/${key}`);
+      }
     }
   },
 
@@ -120,7 +173,10 @@ export default {
       servicePaths: [],
       loading: true,
       deleteDialog: false,
-      deleteLoading: false
+      deleteLoading: false,
+      snackVisible: false,
+      snackText: "",
+      snackColor: ""
     };
   }
 };

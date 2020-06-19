@@ -9,6 +9,8 @@ import (
 func AddRoutes(r httphelpers.Router, d Dependencies) httphelpers.Router {
 	r.AddRoute("GET", "/service_paths", NewServicePathConfigLister(d.Storage))
 	r.AddRoute("DELETE", "/service_paths/keys", NewServicePathKeysDeleter(d.Storage))
+	r.AddRoute("PUT", "/service_paths/key", NewServicePathKeyWriter(d.Storage))
+	r.AddRoute("GET", "/service_paths/key", NewServicePathKeyReader(d.Storage))
 
 	r.ConfigureOPTIONS()
 

@@ -76,6 +76,10 @@ func (r *router) addRoute(method string, route string, h http.HandlerFunc, mw ..
 		m = r.GET
 	case "DELETE":
 		m = r.DELETE
+	case "PUT":
+		m = r.PUT
+	case "POST":
+		m = r.POST
 	case "OPTIONS":
 		m = r.OPTIONS
 	default:
