@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/99designs/aws-vault/prompt"
+	"github.com/99designs/aws-vault/v6/prompt"
 	"github.com/micvbang/confman-go/pkg/logger"
 
 	"github.com/micvbang/confman-go/pkg/confman"
