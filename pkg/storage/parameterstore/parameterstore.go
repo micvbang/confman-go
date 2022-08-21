@@ -15,7 +15,6 @@ import (
 	"github.com/micvbang/confman-go/pkg/storage"
 	"github.com/micvbang/go-helpy/inty"
 	"github.com/micvbang/go-helpy/mapy"
-	"github.com/prometheus/common/log"
 )
 
 // ParameterStore implements storage.Storage using Parameter Store from
@@ -72,12 +71,12 @@ func (ps *ParameterStore) Write(ctx context.Context, servicePath string, key str
 
 func (ps *ParameterStore) WriteKeys(ctx context.Context, servicePath string, config map[string]string) error {
 	if len(config) == 0 {
-		log.Warnf("WriteKeys called with 0 keys")
+		ps.log.Warnf("WriteKeys called with 0 keys")
 		return nil
 	}
 
-	keys, _ := mapy.StringKeys(config)
-	log.Debugf("Attempting to write keys %v %v", servicePath, keys)
+	keys := mapy.Keys(config)
+	ps.log.Debugf("Attempting to write keys %v %v", servicePath, keys)
 
 	curConfig, err := ps.ReadKeys(ctx, servicePath, keys)
 	if err != nil && err != storage.ErrConfigNotFound {
@@ -104,7 +103,7 @@ func (ps *ParameterStore) WriteKeys(ctx context.Context, servicePath string, con
 		}
 	}
 
-	log.Debugf("Wrote keys %v %v", servicePath, keys)
+	ps.log.Debugf("Wrote keys %v %v", servicePath, keys)
 
 	return nil
 }
@@ -123,7 +122,7 @@ const maxKeysPerRequest = 10
 
 func (ps *ParameterStore) ReadKeys(ctx context.Context, servicePath string, keys []string) (map[string]string, error) {
 	if len(keys) == 0 {
-		log.Warnf("ReadKeys called with 0 keys")
+		ps.log.Warnf("ReadKeys called with 0 keys")
 		return nil, nil
 	}
 
@@ -264,7 +263,7 @@ func (ps *ParameterStore) readAllKeyMetadata(ctx context.Context, servicePath st
 
 	err = ps.ssmClient.DescribeParametersPagesWithContext(ctx, &ssm.DescribeParametersInput{
 		ParameterFilters: []*ssm.ParameterStringFilter{
-			&ssm.ParameterStringFilter{
+			{
 				Key:    aws.String("Path"),
 				Option: aws.String("OneLevel"),
 				Values: []*string{aws.String(servicePath)},
@@ -408,7 +407,7 @@ func (ps *ParameterStore) keysToParameterNames(servicePath string, keys []string
 }
 
 func (ps *ParameterStore) String() string {
-	return fmt.Sprintf("ParameterStore")
+	return "ParameterStore"
 }
 
 func (ps *ParameterStore) SetLogger(log logger.Logger) {

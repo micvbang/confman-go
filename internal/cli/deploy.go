@@ -90,7 +90,7 @@ func handleDefine(ctx context.Context, cm confman.Confman, rd io.Reader, w io.Wr
 	}
 
 	deleteKeys := []string{}
-	existingConfigKeys, _ := mapy.StringKeys(existingConfig)
+	existingConfigKeys := mapy.Keys(existingConfig)
 	for _, configKey := range existingConfigKeys {
 		if _, contains := newConfig[configKey]; !contains {
 			deleteKeys = append(deleteKeys, configKey)

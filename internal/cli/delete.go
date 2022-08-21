@@ -62,7 +62,7 @@ func DeleteCommand(ctx context.Context, input DeleteCommandInput, w io.Writer, l
 			return err
 		}
 
-		input.Keys, _ = mapy.StringKeys(config)
+		input.Keys = mapy.Keys(config)
 	}
 
 	if input.Format != formatText {

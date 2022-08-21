@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	builtinLog "log"
@@ -96,7 +97,7 @@ func makeAWSSession(assumeProfile string) (*session.Session, error) {
 	// Attempt to assume the given profile
 	configFile, err := vault.LoadConfigFromEnv()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load config file: %v", err)
+		return nil, fmt.Errorf("failed to load config file: %v", err)
 	}
 
 	configLoader := vault.ConfigLoader{
@@ -124,17 +125,17 @@ func makeAWSSession(assumeProfile string) (*session.Session, error) {
 	}
 
 	ckr := &vault.CredentialKeyring{Keyring: keyring}
-	creds, err := vault.NewTempCredentials(config, ckr)
+	creds, err := vault.NewTempCredentialsProvider(config, ckr)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting temporary credentials: %w", err)
+		return nil, fmt.Errorf("error getting temporary credentials: %w", err)
 	}
 
-	val, err := creds.Get()
+	val, err := creds.Retrieve(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
 	return session.NewSession(&aws.Config{
-		Credentials: credentials.NewStaticCredentialsFromCreds(val),
+		Credentials: credentials.NewStaticCredentials(val.AccessKeyID, val.SecretAccessKey, val.SessionToken),
 	})
 }

@@ -158,7 +158,7 @@ func (c *confman) copy(ctx context.Context, dst Confman) (map[string]string, err
 }
 
 func (c *confman) Define(ctx context.Context, config map[string]string) error {
-	newKeys, _ := mapy.StringKeys(config)
+	newKeys := mapy.Keys(config)
 	newKeysLookup := stringy.ToSet(newKeys)
 
 	currentConfig, err := c.storage.ReadAll(ctx, c.servicePath)
@@ -166,7 +166,7 @@ func (c *confman) Define(ctx context.Context, config map[string]string) error {
 		return err
 	}
 
-	currentKeys, _ := mapy.StringKeys(currentConfig)
+	currentKeys := mapy.Keys(currentConfig)
 	keysToDelete := make([]string, 0, len(currentKeys))
 	for _, currentKey := range currentKeys {
 		if !newKeysLookup.Contains(currentKey) {
@@ -200,11 +200,7 @@ func (c *confman) DeleteAll(ctx context.Context) error {
 		return err
 	}
 
-	keys, err := mapy.StringKeys(config)
-	if err != nil {
-		return err
-	}
-
+	keys := mapy.Keys(config)
 	return c.storage.DeleteKeys(ctx, c.servicePath, keys)
 }
 
