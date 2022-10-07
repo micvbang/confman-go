@@ -76,7 +76,7 @@ func (ps *ParameterStore) WriteKeys(ctx context.Context, servicePath string, con
 		return nil
 	}
 
-	keys, _ := mapy.StringKeys(config)
+	keys := mapy.Keys(config)
 	log.Debugf("Attempting to write keys %v %v", servicePath, keys)
 
 	curConfig, err := ps.ReadKeys(ctx, servicePath, keys)

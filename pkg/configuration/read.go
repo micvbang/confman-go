@@ -44,7 +44,7 @@ func readConfiguration(path string) (map[string]string, error) {
 	ext := filepath.Ext(path)
 	f, exists := extensionReader[ext]
 	if !exists {
-		supportedFormats, _ := mapy.StringKeys(extensionReader)
+		supportedFormats := mapy.Keys(extensionReader)
 		return nil, ConfigError{msg: fmt.Sprintf("failed to parse file \"%s\". Configuration in \"%s\" format not supported. Supported formats are: %v", path, ext, supportedFormats)}
 	}
 

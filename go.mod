@@ -6,7 +6,7 @@ require (
 	github.com/99designs/aws-vault/v6 v6.2.0
 	github.com/99designs/keyring v1.1.6
 	github.com/aws/aws-sdk-go v1.34.13
-	github.com/micvbang/go-helpy v0.0.17
+	github.com/micvbang/go-helpy v0.1.7
 	github.com/prometheus/common v0.4.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.5.1
