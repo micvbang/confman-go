@@ -19,7 +19,7 @@ Confman differs (mostly in spirit) from chamber in that it's meant to be used fo
 The overall goal of confman is to avoid having multiple versions of configuration lying around on different developer/development/production machines, and instead maintain it in a centralized system with ACLs from which the configuration can be retrieved/modified by relevant consumers (developers/services) whenever needed.
 
 
-In some environments there's a culture for adding service configuration to the same repository as the source code itself, e.g. using something like `.env[.env]` files. I've found that managing configuration separately from the code being configured has the benefit of making it really easy to deploy services to new environments without any changes to the service being deployed.
+In some environments there's a culture of adding service configuration to the same repository as the source code itself, e.g. using something like `.env[.env]` files. I've found that managing configuration separately from the code being configured has the benefit of making it really easy to deploy services to new environments without any changes to the service being deployed.
 
 # Installation
 
@@ -51,7 +51,7 @@ At runtime, our email dispatch service needs credentials for a database. We can 
   DB_USER: dev-username
   DB_PASSWORD: dev-password
 
-/email-dispatch/runtime/development:
+/email-dispatch/runtime/production:
   DB_USER: prod-username
   DB_PASSWORD: prod-password
 ```
