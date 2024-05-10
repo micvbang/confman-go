@@ -2,15 +2,17 @@ package parameterstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/aws/smithy-go"
 	"github.com/micvbang/confman-go/pkg/logger"
 	"github.com/micvbang/confman-go/pkg/storage"
 	"github.com/micvbang/go-helpy/inty"
@@ -22,7 +24,7 @@ import (
 // AWS Systems Manager
 type ParameterStore struct {
 	log       logger.Logger
-	ssmClient ssmiface.SSMAPI
+	ssmClient SSMClient
 	kmsKeyID  string
 }
 
@@ -30,8 +32,16 @@ var _ storage.Storage = &ParameterStore{}
 
 const kmsKeyAliasPrefix = "alias/"
 
+type SSMClient interface {
+	PutParameter(ctx context.Context, params *ssm.PutParameterInput, optFns ...func(*ssm.Options)) (*ssm.PutParameterOutput, error)
+	GetParameters(ctx context.Context, params *ssm.GetParametersInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersOutput, error)
+	GetParametersByPath(ctx context.Context, params *ssm.GetParametersByPathInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersByPathOutput, error)
+	DescribeParameters(ctx context.Context, params *ssm.DescribeParametersInput, optFns ...func(*ssm.Options)) (*ssm.DescribeParametersOutput, error)
+	DeleteParameters(ctx context.Context, params *ssm.DeleteParametersInput, optFns ...func(*ssm.Options)) (*ssm.DeleteParametersOutput, error)
+}
+
 // New returns a configured instance of ParameterStore.
-func New(log logger.Logger, ssmClient ssmiface.SSMAPI, kmsKeyAlias string) *ParameterStore {
+func New(log logger.Logger, ssmClient SSMClient, kmsKeyAlias string) *ParameterStore {
 	if !strings.HasPrefix(kmsKeyAlias, kmsKeyAliasPrefix) {
 		kmsKeyAlias = fmt.Sprintf("%s%s", kmsKeyAliasPrefix, kmsKeyAlias)
 	}
@@ -49,7 +59,7 @@ func New(log logger.Logger, ssmClient ssmiface.SSMAPI, kmsKeyAlias string) *Para
 
 func (ps *ParameterStore) Write(ctx context.Context, servicePath string, key string, value string) error {
 	curValue, err := ps.Read(ctx, servicePath, key)
-	if err != nil && err != storage.ErrConfigNotFound {
+	if err != nil && !errors.Is(err, storage.ErrConfigNotFound) {
 		return err
 	}
 
@@ -57,10 +67,10 @@ func (ps *ParameterStore) Write(ctx context.Context, servicePath string, key str
 		return nil
 	}
 
-	_, err = ps.ssmClient.PutParameterWithContext(ctx, &ssm.PutParameterInput{
+	_, err = ps.ssmClient.PutParameter(ctx, &ssm.PutParameterInput{
 		Name:      aws.String(ps.parameterPath(servicePath, key)),
 		KeyId:     aws.String(ps.kmsKeyID),
-		Type:      aws.String("SecureString"), // Encrypt all configuration
+		Type:      types.ParameterTypeSecureString, // Encrypt all configuration
 		Overwrite: aws.Bool(true),
 		Value:     aws.String(value),
 
@@ -80,7 +90,7 @@ func (ps *ParameterStore) WriteKeys(ctx context.Context, servicePath string, con
 	log.Debugf("Attempting to write keys %v %v", servicePath, keys)
 
 	curConfig, err := ps.ReadKeys(ctx, servicePath, keys)
-	if err != nil && err != storage.ErrConfigNotFound {
+	if err != nil && !errors.Is(err, storage.ErrConfigNotFound) {
 		return err
 	}
 
@@ -167,14 +177,18 @@ func (ps *ParameterStore) readKeys(ctx context.Context, servicePath string, keys
 
 	log.Debugf("Attempting to read keys %v", keys)
 
-	output, err := ps.ssmClient.GetParametersWithContext(ctx, &ssm.GetParametersInput{
+	output, err := ps.ssmClient.GetParameters(ctx, &ssm.GetParametersInput{
 		Names:          ps.keysToParameterNames(servicePath, keys),
 		WithDecryption: aws.Bool(true),
 	})
 	if err != nil {
-		if _, ok := err.(*ssm.ParameterNotFound); ok {
-			return nil, storage.ErrConfigNotFound
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) {
+			if apiErr.ErrorCode() == "ParameterNotFound" {
+				err = errors.Join(err, storage.ErrConfigNotFound)
+			}
 		}
+
 		return nil, err
 	}
 
@@ -185,7 +199,7 @@ func (ps *ParameterStore) readKeys(ctx context.Context, servicePath string, keys
 
 	config := make(map[string]string, len(keys))
 	for _, parameter := range output.Parameters {
-		config[ps.parameterBaseName(parameter)] = aws.StringValue(parameter.Value)
+		config[ps.parameterBaseName(parameter)] = aws.ToString(parameter.Value)
 	}
 
 	log.Debugf("Read keys %s %v", servicePath, keys)
@@ -200,26 +214,31 @@ func (ps *ParameterStore) ReadAll(ctx context.Context, servicePath string) (map[
 
 	config := make(map[string]string, 50)
 
-	err := ps.ssmClient.GetParametersByPathPagesWithContext(ctx, &ssm.GetParametersByPathInput{
+	paginator := ssm.NewGetParametersByPathPaginator(ps.ssmClient, &ssm.GetParametersByPathInput{
 		Path:             aws.String(servicePath),
 		Recursive:        aws.Bool(false),
 		WithDecryption:   aws.Bool(true),
-		MaxResults:       aws.Int64(maxKeysPerRequest),
+		MaxResults:       aws.Int32(maxKeysPerRequest),
 		ParameterFilters: nil,
 		NextToken:        nil,
-	}, func(output *ssm.GetParametersByPathOutput, b bool) bool {
-		for _, p := range output.Parameters {
-			key := ps.parameterBaseName(p)
-			config[key] = aws.StringValue(p.Value)
-		}
-		return true
 	})
 
-	if err != nil {
-		if _, ok := err.(*ssm.ParameterNotFound); ok {
-			return nil, storage.ErrConfigNotFound
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			var apiErr smithy.APIError
+			if errors.As(err, &apiErr) {
+				if apiErr.ErrorCode() == "ParameterNotFound" {
+					err = errors.Join(err, storage.ErrConfigNotFound)
+				}
+			}
+			return nil, err
 		}
-		return nil, err
+
+		for _, p := range page.Parameters {
+			key := ps.parameterBaseName(p)
+			config[key] = aws.ToString(p.Value)
+		}
 	}
 
 	return config, nil
@@ -262,37 +281,43 @@ func (ps *ParameterStore) readAllKeyMetadata(ctx context.Context, servicePath st
 
 	keysMetadata := make([]keyMetadata, 0, 50)
 
-	err = ps.ssmClient.DescribeParametersPagesWithContext(ctx, &ssm.DescribeParametersInput{
-		ParameterFilters: []*ssm.ParameterStringFilter{
-			&ssm.ParameterStringFilter{
+	paginator := ssm.NewDescribeParametersPaginator(ps.ssmClient, &ssm.DescribeParametersInput{
+		ParameterFilters: []types.ParameterStringFilter{
+			{
 				Key:    aws.String("Path"),
 				Option: aws.String("OneLevel"),
-				Values: []*string{aws.String(servicePath)},
+				Values: []string{servicePath},
 			},
 		},
-	}, func(output *ssm.DescribeParametersOutput, b bool) bool {
-		for _, p := range output.Parameters {
+	})
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			var apiErr smithy.APIError
+			if errors.As(err, &apiErr) {
+				if apiErr.ErrorCode() == "ParameterNotFound" {
+					err = errors.Join(err, storage.ErrConfigNotFound)
+				}
+			}
+
+			return nil, err
+		}
+
+		for _, p := range page.Parameters {
 			key := ps.parameterMetadataBaseName(p)
 
 			keysMetadata = append(keysMetadata, keyMetadata{
 				key:              key,
 				value:            config[key],
-				description:      aws.StringValue(p.Description),
-				version:          aws.Int64Value(p.Version),
-				lastModifiedDate: aws.TimeValue(p.LastModifiedDate),
-				parameterType:    aws.StringValue(p.Type),
-				tier:             aws.StringValue(p.Tier),
-				lastModifiedUser: aws.StringValue(p.LastModifiedUser),
+				description:      aws.ToString(p.Description),
+				version:          p.Version,
+				lastModifiedDate: aws.ToTime(p.LastModifiedDate),
+				parameterType:    string(p.Type),
+				tier:             string(p.Tier),
+				lastModifiedUser: aws.ToString(p.LastModifiedUser),
 			})
 		}
-
-		return true
-	})
-	if err != nil {
-		if _, ok := err.(*ssm.ParameterNotFound); ok {
-			return nil, storage.ErrConfigNotFound
-		}
-		return nil, err
 	}
 
 	return keysMetadata, nil
@@ -333,7 +358,7 @@ func (ps *ParameterStore) deleteKeys(ctx context.Context, log logger.Logger, ser
 		return storage.ErrTooManyKeys
 	}
 
-	output, err := ps.ssmClient.DeleteParametersWithContext(ctx, &ssm.DeleteParametersInput{
+	output, err := ps.ssmClient.DeleteParameters(ctx, &ssm.DeleteParametersInput{
 		Names: ps.keysToParameterNames(servicePath, keys),
 	})
 	if err != nil {
@@ -345,13 +370,13 @@ func (ps *ParameterStore) deleteKeys(ctx context.Context, log logger.Logger, ser
 	}
 
 	for _, parameter := range output.DeletedParameters {
-		log.Debugf("Deleted parameter %s", aws.StringValue(parameter))
+		log.Debugf("Deleted parameter %s", parameter)
 	}
 
 	// NOTE: not reporting errors when keys not deleted because.. well, they
 	// aren't there now if they weren't found.
 	for _, parameter := range output.InvalidParameters {
-		log.Warnf("Failed to delete parameter %s", aws.StringValue(parameter))
+		log.Warnf("Failed to delete parameter %s", parameter)
 	}
 
 	return nil
@@ -361,22 +386,12 @@ func (ps *ParameterStore) parameterPath(servicePath string, key string) string {
 	return path.Join(servicePath, key)
 }
 
-func (ps *ParameterStore) parameterMetadataBaseName(parameter *ssm.ParameterMetadata) string {
-	// TODO: don't fail silently like this.
-	if parameter == nil {
-		return ""
-	}
-
-	return path.Base(aws.StringValue(parameter.Name))
+func (ps *ParameterStore) parameterMetadataBaseName(parameter types.ParameterMetadata) string {
+	return path.Base(aws.ToString(parameter.Name))
 }
 
-func (ps *ParameterStore) parameterBaseName(parameter *ssm.Parameter) string {
-	// TODO: don't fail silently like this.
-	if parameter == nil {
-		return ""
-	}
-
-	return path.Base(aws.StringValue(parameter.Name))
+func (ps *ParameterStore) parameterBaseName(parameter types.Parameter) string {
+	return path.Base(aws.ToString(parameter.Name))
 }
 
 func (ps *ParameterStore) batchKeys(keys []string, batchSize int) [][]string {
@@ -397,11 +412,11 @@ func (ps *ParameterStore) batchKeys(keys []string, batchSize int) [][]string {
 	return batches
 }
 
-func (ps *ParameterStore) keysToParameterNames(servicePath string, keys []string) []*string {
-	names := make([]*string, len(keys))
+func (ps *ParameterStore) keysToParameterNames(servicePath string, keys []string) []string {
+	names := make([]string, len(keys))
 
 	for i, key := range keys {
-		names[i] = aws.String(ps.parameterPath(servicePath, key))
+		names[i] = ps.parameterPath(servicePath, key)
 	}
 
 	return names

@@ -1,16 +1,13 @@
 package cli
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	builtinLog "log"
 
-	"github.com/99designs/aws-vault/v6/vault"
-	"github.com/99designs/keyring"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/micvbang/confman-go/pkg/confman"
 	"github.com/micvbang/confman-go/pkg/logger"
 	"github.com/micvbang/confman-go/pkg/storage"
@@ -18,9 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
-
-// TODO: make not global
-var storageBackend storage.Storage
 
 var GlobalFlags struct {
 	Debug bool
@@ -65,76 +59,23 @@ func ConfigureGlobals(app *kingpin.Application) logger.Logger {
 		} else {
 			if len(GlobalFlags.AssumeProfile) > 0 {
 				// For silencing logs from aws-vault
-				builtinLog.SetOutput(ioutil.Discard)
+				builtinLog.SetOutput(io.Discard)
 			}
 
 			logrusLog.Level = logrus.WarnLevel
 		}
 
-		session, err := makeAWSSession(GlobalFlags.AssumeProfile)
+		awsCfg, err := config.LoadDefaultConfig(context.TODO())
 		if err != nil {
-			app.Fatalf("Failed to start AWS session: %v", err)
+			return fmt.Errorf("Failed to init aws config: %v", err)
 		}
 
 		confman.ChamberCompatible = GlobalFlags.ChamberCompatible
-		ssmClient := ssm.New(session)
+		ssmClient := ssm.NewFromConfig(awsCfg)
 		GlobalFlags.Storage = parameterstore.New(log, ssmClient, "parameter_store_key")
 
 		return nil
 	})
 
 	return log
-}
-
-func makeAWSSession(assumeProfile string) (*session.Session, error) {
-	if len(assumeProfile) == 0 {
-		return session.NewSession(&aws.Config{
-			Credentials: credentials.NewEnvCredentials(),
-		})
-	}
-
-	// Attempt to assume the given profile
-	configFile, err := vault.LoadConfigFromEnv()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to load config file: %v", err)
-	}
-
-	configLoader := vault.ConfigLoader{
-		File:          configFile,
-		BaseConfig:    vault.Config{},
-		ActiveProfile: assumeProfile,
-	}
-	config, err := configLoader.LoadFromProfile(assumeProfile)
-	if err != nil {
-		return nil, err
-	}
-
-	keyring, err := keyring.Open(keyring.Config{
-		ServiceName: "aws-vault",
-		FileDir:     "~/.awsvault/keys/",
-		// FilePasswordFunc:         fileKeyringPassphrasePrompt,
-		LibSecretCollectionName:  "awsvault",
-		KWalletAppID:             "aws-vault",
-		KWalletFolder:            "aws-vault",
-		KeychainTrustApplication: true,
-		WinCredPrefix:            "aws-vault",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	ckr := &vault.CredentialKeyring{Keyring: keyring}
-	creds, err := vault.NewTempCredentials(config, ckr)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting temporary credentials: %w", err)
-	}
-
-	val, err := creds.Get()
-	if err != nil {
-		return nil, err
-	}
-
-	return session.NewSession(&aws.Config{
-		Credentials: credentials.NewStaticCredentialsFromCreds(val),
-	})
 }

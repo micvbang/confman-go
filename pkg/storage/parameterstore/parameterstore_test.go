@@ -6,14 +6,20 @@ import (
 	"path"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/aws/smithy-go"
 	"github.com/micvbang/confman-go/pkg/logger"
 	"github.com/micvbang/confman-go/pkg/storage"
 	"github.com/micvbang/confman-go/pkg/storage/parameterstore"
 	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+)
+
+var (
+	log                  = logger.LogrusWrapper{Logger: logrus.New()}
+	ErrParameterNotFound = &smithy.GenericAPIError{Code: "ParameterNotFound"}
 )
 
 // TestParameterStoreReadExists verifies that ParameterStore returns the
@@ -26,13 +32,14 @@ func TestParameterStoreReadExists(t *testing.T) {
 	)
 
 	ssmMock := &parameterstore.MockSSMClient{}
-	parameters := makeParameters(servicePath, map[string]string{
-		key: expectedValue,
-	})
-	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
-		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
+	ssmMock.MockGetParameters = func(ctx context.Context, params *ssm.GetParametersInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersOutput, error) {
+		parameters := makeParameters(servicePath, map[string]string{
+			key: expectedValue,
+		})
 
-	log := logger.LogrusWrapper{logrus.New()}
+		return &ssm.GetParametersOutput{Parameters: parameters}, nil
+	}
+
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -46,16 +53,16 @@ func TestParameterStoreReadExists(t *testing.T) {
 // when the given key does not exist.
 func TestParameterStoreReadNotExists(t *testing.T) {
 	ssmMock := &parameterstore.MockSSMClient{}
-	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
-		Return((*ssm.GetParametersOutput)(nil), &ssm.ParameterNotFound{})
+	ssmMock.MockGetParameters = func(ctx context.Context, params *ssm.GetParametersInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersOutput, error) {
+		return nil, ErrParameterNotFound
+	}
 
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
 	_, err := ps.Read(ctx, "/some/service", "some-key")
 
-	require.Equal(t, storage.ErrConfigNotFound, err)
+	require.ErrorIs(t, err, storage.ErrConfigNotFound)
 }
 
 // TestParameterStoreWriteExistsNotEqual verifies that Put updates the given key
@@ -69,22 +76,21 @@ func TestParameterStoreWriteExistsNotEqual(t *testing.T) {
 	)
 
 	ssmMock := &parameterstore.MockSSMClient{}
-	parameters := makeParameters(servicePath, map[string]string{key: "not value"})
+	ssmMock.MockGetParameters = func(ctx context.Context, params *ssm.GetParametersInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersOutput, error) {
+		parameters := makeParameters(servicePath, map[string]string{key: "not value"})
+		return &ssm.GetParametersOutput{Parameters: parameters}, nil
+	}
+	ssmMock.MockPutParameter = func(ctx context.Context, params *ssm.PutParameterInput, optFns ...func(*ssm.Options)) (*ssm.PutParameterOutput, error) {
+		return &ssm.PutParameterOutput{}, nil
+	}
 
-	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
-		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
-
-	ssmMock.On("PutParameterWithContext", mock.Anything, mock.Anything, mock.Anything).
-		Return(&ssm.PutParameterOutput{}, nil)
-	defer ssmMock.AssertExpectations(t)
-
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
 	err := ps.Write(ctx, servicePath, key, value)
 
 	require.NoError(t, err)
+	require.True(t, ssmMock.PutParameterCalled)
 }
 
 // TestParameterStoreWriteExistsEqual verifies that Put does not update the
@@ -98,20 +104,19 @@ func TestParameterStoreWriteExistsEqual(t *testing.T) {
 	)
 
 	ssmMock := &parameterstore.MockSSMClient{}
-	parameters := makeParameters(servicePath, map[string]string{key: value})
+	ssmMock.MockGetParameters = func(ctx context.Context, params *ssm.GetParametersInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersOutput, error) {
+		parameters := makeParameters(servicePath, map[string]string{key: value})
+		return &ssm.GetParametersOutput{Parameters: parameters}, nil
+	}
 
-	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
-		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
-
-	defer ssmMock.AssertExpectations(t)
-
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
 	err := ps.Write(ctx, servicePath, key, value)
 
 	require.NoError(t, err)
+	require.True(t, ssmMock.GetParametersCalled)
+	require.False(t, ssmMock.PutParameterCalled)
 }
 
 // TestParameterStoreWriteNotExists verifies that Put Writes the given
@@ -126,20 +131,22 @@ func TestParameterStoreWriteNotExists(t *testing.T) {
 
 	ssmMock := &parameterstore.MockSSMClient{}
 
-	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
-		Return((*ssm.GetParametersOutput)(nil), &ssm.ParameterNotFound{})
+	ssmMock.MockGetParameters = func(ctx context.Context, params *ssm.GetParametersInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersOutput, error) {
+		return nil, ErrParameterNotFound
+	}
 
-	ssmMock.On("PutParameterWithContext", mock.Anything, mock.Anything, mock.Anything).
-		Return(&ssm.PutParameterOutput{}, nil)
-	defer ssmMock.AssertExpectations(t)
+	ssmMock.MockPutParameter = func(ctx context.Context, params *ssm.PutParameterInput, optFns ...func(*ssm.Options)) (*ssm.PutParameterOutput, error) {
+		return &ssm.PutParameterOutput{}, nil
+	}
 
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
 	err := ps.Write(ctx, servicePath, key, value)
 
 	require.NoError(t, err)
+	require.True(t, ssmMock.GetParametersCalled)
+	require.True(t, ssmMock.PutParameterCalled)
 }
 
 // TestParameterStoreReadAllServiceExists verifies that configs are retrieved
@@ -156,9 +163,8 @@ func TestParameterStoreReadAllServiceExists(t *testing.T) {
 		"var3": "val3",
 	}
 
-	mockGetParametersByPathPagesWithContext(ssmMock, servicePath, expectedConfig).Once()
+	mockGetParametersByPathPagesWithContext(ssmMock, servicePath, expectedConfig)
 
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -184,11 +190,8 @@ func TestParameterStoreReadAllServiceExistsMultiplePages(t *testing.T) {
 	config2 := map[string]string{
 		"var4": "val4",
 	}
-	mockGetParametersByPathPagesWithContext(ssmMock, servicePath, config1, config2).Once()
+	mockGetParametersByPathPagesWithContext(ssmMock, servicePath, config1, config2)
 
-	defer ssmMock.AssertExpectations(t)
-
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -211,15 +214,15 @@ func TestParameterStoreReadAllServiceExistsMultiplePages(t *testing.T) {
 func TestParameterStoreReadAllServiceNotExists(t *testing.T) {
 	const servicePath = "/service/name"
 	ssmMock := &parameterstore.MockSSMClient{}
-	ssmMock.On("GetParametersByPathPagesWithContext", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(&ssm.ParameterNotFound{})
+	ssmMock.MockGetParametersByPath = func(ctx context.Context, params *ssm.GetParametersByPathInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersByPathOutput, error) {
+		return nil, ErrParameterNotFound
+	}
 
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
 	_, err := ps.ReadAll(ctx, servicePath)
-	require.Equal(t, storage.ErrConfigNotFound, err)
+	require.ErrorIs(t, err, storage.ErrConfigNotFound)
 }
 
 // TestParameterStoreReadKeysAllExist verifies that ReadKeys retrieves all
@@ -239,10 +242,10 @@ func TestParameterStoreReadKeysAllExist(t *testing.T) {
 
 	ssmMock := &parameterstore.MockSSMClient{}
 	parameters := makeParameters(servicePath, expectedConfig)
-	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
-		Return(&ssm.GetParametersOutput{Parameters: parameters}, nil)
+	ssmMock.MockGetParameters = func(ctx context.Context, params *ssm.GetParametersInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersOutput, error) {
+		return &ssm.GetParametersOutput{Parameters: parameters}, nil
+	}
 
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -264,7 +267,6 @@ func TestParameterStoreReadKeysNoKeys(t *testing.T) {
 
 	ssmMock := &parameterstore.MockSSMClient{}
 
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -283,13 +285,13 @@ func TestParameterStoreReadKeysOneNotExist(t *testing.T) {
 
 	parameters := makeParameters(servicePath, map[string]string{"var1": "val1"})
 	ssmMock := &parameterstore.MockSSMClient{}
-	ssmMock.On("GetParametersWithContext", mock.Anything, mock.Anything, mock.Anything).
-		Return(&ssm.GetParametersOutput{
+	ssmMock.MockGetParameters = func(ctx context.Context, params *ssm.GetParametersInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersOutput, error) {
+		return &ssm.GetParametersOutput{
 			Parameters:        parameters,
-			InvalidParameters: []*string{aws.String(nonExistingKey)},
-		}, nil)
+			InvalidParameters: []string{nonExistingKey},
+		}, nil
+	}
 
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -297,8 +299,6 @@ func TestParameterStoreReadKeysOneNotExist(t *testing.T) {
 	require.Equal(t, storage.ErrConfigNotFound, err)
 	require.Equal(t, 0, len(gotValues))
 }
-
-// TODO: test Delete* functionality
 
 // TestDeleteExpectedKey verifies that the expected key is requested for
 // deletion.
@@ -308,18 +308,20 @@ func TestDeleteExpectedKey(t *testing.T) {
 		key         = "thekey"
 	)
 	keyPath := path.Join(servicePath, key)
-	parameters := []*string{&keyPath}
+	parameters := []string{keyPath}
 
 	ssmMock := &parameterstore.MockSSMClient{}
-	ssmMock.On("DeleteParametersWithContext", mock.Anything, &ssm.DeleteParametersInput{Names: parameters}, mock.Anything).
-		Return(&ssm.DeleteParametersOutput{DeletedParameters: parameters}, nil)
+	ssmMock.MockDeleteParameters = func(ctx context.Context, params *ssm.DeleteParametersInput, optFns ...func(*ssm.Options)) (*ssm.DeleteParametersOutput, error) {
+		return &ssm.DeleteParametersOutput{DeletedParameters: parameters}, nil
+	}
 
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
 	err := ps.Delete(ctx, servicePath, key)
 	require.NoError(t, err)
+
+	require.True(t, ssmMock.DeleteParametersCalled)
 }
 
 // TestDeleteKeysExpectedKeys verifies that the expected keys are requested
@@ -332,13 +334,13 @@ func TestDeleteKeysExpectedKeys(t *testing.T) {
 	)
 	key1Path := path.Join(servicePath, key1)
 	key2Path := path.Join(servicePath, key2)
-	parameters := []*string{&key1Path, &key2Path}
+	parameters := []string{key1Path, key2Path}
 
 	ssmMock := &parameterstore.MockSSMClient{}
-	ssmMock.On("DeleteParametersWithContext", mock.Anything, &ssm.DeleteParametersInput{Names: parameters}, mock.Anything).
-		Return(&ssm.DeleteParametersOutput{DeletedParameters: parameters}, nil)
+	ssmMock.MockDeleteParameters = func(ctx context.Context, params *ssm.DeleteParametersInput, optFns ...func(*ssm.Options)) (*ssm.DeleteParametersOutput, error) {
+		return &ssm.DeleteParametersOutput{DeletedParameters: parameters}, nil
+	}
 
-	log := logger.LogrusWrapper{logrus.New()}
 	ps := parameterstore.New(log, ssmMock, "kms key id")
 
 	ctx := context.Background()
@@ -353,28 +355,28 @@ func requireConfigEqual(t *testing.T, expected, got map[string]string) {
 	}
 }
 
-func mockGetParametersByPathPagesWithContext(ssmMock *parameterstore.MockSSMClient, servicePath string, configPages ...map[string]string) *mock.Call {
-	return ssmMock.On("GetParametersByPathPagesWithContext", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(nil).
-		Run(func(args mock.Arguments) {
-			f := args.Get(2).(func(*ssm.GetParametersByPathOutput, bool) bool)
+func mockGetParametersByPathPagesWithContext(ssmMock *parameterstore.MockSSMClient, servicePath string, configPages ...map[string]string) {
+	batchI := 0
+	ssmMock.MockGetParametersByPath = func(ctx context.Context, params *ssm.GetParametersByPathInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersByPathOutput, error) {
+		output := &ssm.GetParametersByPathOutput{
+			Parameters: makeParameters(servicePath, configPages[batchI]),
+		}
 
-			for i, config := range configPages {
-				output := &ssm.GetParametersByPathOutput{
-					Parameters: makeParameters(servicePath, config),
-				}
+		batchI += 1
+		lastPage := batchI == len(configPages)
+		if !lastPage {
+			output.NextToken = aws.String("more data!")
+		}
 
-				lastPage := i == len(configPages)-1
-				f(output, lastPage)
-			}
-		})
+		return output, nil
+	}
 }
 
-func makeParameters(servicePath string, config map[string]string) []*ssm.Parameter {
-	parameters := make([]*ssm.Parameter, 0, len(config))
+func makeParameters(servicePath string, config map[string]string) []types.Parameter {
+	parameters := make([]types.Parameter, 0, len(config))
 
 	for key, value := range config {
-		parameters = append(parameters, &ssm.Parameter{
+		parameters = append(parameters, types.Parameter{
 			Name:  aws.String(path.Join(servicePath, key)),
 			Value: aws.String(value),
 		})

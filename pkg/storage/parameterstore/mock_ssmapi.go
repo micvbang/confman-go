@@ -3,57 +3,43 @@ package parameterstore
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/aws/aws-sdk-go/service/ssm/ssmiface"
-	"github.com/stretchr/testify/mock"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 type MockSSMClient struct {
-	ssmiface.SSMAPI
-	mock.Mock
+	PutParameterCalled bool
+	MockPutParameter   func(ctx context.Context, params *ssm.PutParameterInput, optFns ...func(*ssm.Options)) (*ssm.PutParameterOutput, error)
+
+	GetParametersCalled bool
+	MockGetParameters   func(ctx context.Context, params *ssm.GetParametersInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersOutput, error)
+
+	GetParametersByPathCalled bool
+	MockGetParametersByPath   func(ctx context.Context, params *ssm.GetParametersByPathInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersByPathOutput, error)
+
+	DescribeParametersCalled bool
+	MockDescribeParameters   func(ctx context.Context, params *ssm.DescribeParametersInput, optFns ...func(*ssm.Options)) (*ssm.DescribeParametersOutput, error)
+
+	DeleteParametersCalled bool
+	MockDeleteParameters   func(ctx context.Context, params *ssm.DeleteParametersInput, optFns ...func(*ssm.Options)) (*ssm.DeleteParametersOutput, error)
 }
 
-func (_m *MockSSMClient) GetParameterWithContext(ctx context.Context, input *ssm.GetParameterInput, options ...request.Option) (*ssm.GetParameterOutput, error) {
-	ret := _m.Called(ctx, input, options)
-
-	r0 := ret.Get(0).(*ssm.GetParameterOutput)
-	r1 := ret.Error(1)
-
-	return r0, r1
+func (m *MockSSMClient) PutParameter(ctx context.Context, params *ssm.PutParameterInput, optFns ...func(*ssm.Options)) (*ssm.PutParameterOutput, error) {
+	m.PutParameterCalled = true
+	return m.MockPutParameter(ctx, params, optFns...)
 }
-
-func (_m *MockSSMClient) GetParametersWithContext(ctx context.Context, input *ssm.GetParametersInput, options ...request.Option) (*ssm.GetParametersOutput, error) {
-	ret := _m.Called(ctx, input, options)
-
-	r0 := ret.Get(0).(*ssm.GetParametersOutput)
-	r1 := ret.Error(1)
-
-	return r0, r1
+func (m *MockSSMClient) GetParameters(ctx context.Context, params *ssm.GetParametersInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersOutput, error) {
+	m.GetParametersCalled = true
+	return m.MockGetParameters(ctx, params, optFns...)
 }
-
-func (_m *MockSSMClient) PutParameterWithContext(ctx context.Context, input *ssm.PutParameterInput, options ...request.Option) (*ssm.PutParameterOutput, error) {
-	ret := _m.Called(ctx, input, options)
-
-	r0 := ret.Get(0).(*ssm.PutParameterOutput)
-	r1 := ret.Error(1)
-
-	return r0, r1
+func (m *MockSSMClient) GetParametersByPath(ctx context.Context, params *ssm.GetParametersByPathInput, optFns ...func(*ssm.Options)) (*ssm.GetParametersByPathOutput, error) {
+	m.GetParametersByPathCalled = true
+	return m.MockGetParametersByPath(ctx, params, optFns...)
 }
-
-func (_m *MockSSMClient) GetParametersByPathPagesWithContext(ctx context.Context, input *ssm.GetParametersByPathInput, fn func(*ssm.GetParametersByPathOutput, bool) bool, options ...request.Option) error {
-	ret := _m.Called(ctx, input, fn, options)
-
-	r0 := ret.Error(0)
-
-	return r0
+func (m *MockSSMClient) DescribeParameters(ctx context.Context, params *ssm.DescribeParametersInput, optFns ...func(*ssm.Options)) (*ssm.DescribeParametersOutput, error) {
+	m.DescribeParametersCalled = true
+	return m.MockDescribeParameters(ctx, params, optFns...)
 }
-
-func (_m *MockSSMClient) DeleteParametersWithContext(ctx context.Context, input *ssm.DeleteParametersInput, options ...request.Option) (*ssm.DeleteParametersOutput, error) {
-	ret := _m.Called(ctx, input, options)
-
-	r0 := ret.Get(0).(*ssm.DeleteParametersOutput)
-	r1 := ret.Error(1)
-
-	return r0, r1
+func (m *MockSSMClient) DeleteParameters(ctx context.Context, params *ssm.DeleteParametersInput, optFns ...func(*ssm.Options)) (*ssm.DeleteParametersOutput, error) {
+	m.DeleteParametersCalled = true
+	return m.MockDeleteParameters(ctx, params, optFns...)
 }
